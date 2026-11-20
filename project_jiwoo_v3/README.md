@@ -18,7 +18,7 @@
 | Q2 | 1 | 〃 | NOR (OR + NOT) |
 | Q3 | 1 | 〃 | XOR |
 | Q4 | 2 | 8:1 MUX 하나 | 입력 D0~D7 = `3 8 5 1 7 2 9 4`, 목표 **9** → `ABC = 110` (D6) |
-| Q5 | 2 | 4:1 MUX 두 개 + 2:1 MUX 하나 | 위 MUX D0-D3 = `6 2 8 5`, 아래 MUX E0-E3 = `1 4 7 3`, 목표 **4** → `ABC = 011` (E1) |
+| Q5 | 2 | 4:1 MUX 두 개 + 2:1 MUX 하나 | 위 MUX D0~D3 = `6 2 8 5`, 아래 MUX E0~E3 = `1 4 7 3`, 목표 **4** → `ABC = 011` (E1) |
 
 ### 레벨 1 (Q1~Q3) : 게이트 맞히기
 
@@ -36,7 +36,7 @@
 - 정답이면 숨겨진 게이트가 초록색으로 표시되고(`THE GATE`), 오답이면 `YOUR GATE GIVES A DIFFERENT K-MAP`이 나옵니다.
 - 오답 후 다시 시도할 때는 이전에 고른 게이트가 그대로 남아 있습니다.
 
-### 레벨 2 (Q4-Q5) : MUX 선택 신호 맞히기
+### 레벨 2 (Q4~Q5) : MUX 선택 신호 맞히기
 
 선택 신호 **A, B, C**를 스위치로 정해 MUX 출력이 목표 숫자가 되게 합니다.
 
@@ -71,7 +71,7 @@
 |---|---|
 | 리셋 | `CPU_RESETN` (누르면 0) |
 | VGA | 640x480 @ 60Hz, RGB 각 4비트 |
-| 7세그 | `AN7`=레벨, `AN6`=문제 번호(1-5), `AN3`=목숨, `AN2-AN0`=점수. `AN5`, `AN4`는 꺼짐 |
+| 7세그 | `AN7`=레벨, `AN6`=문제 번호(1~5), `AN3`=목숨, `AN2~AN0`=점수. `AN5`, `AN4`는 꺼짐 |
 | LED | `led_x[2:0]`=목숨 (3개면 모두 켜짐), `led_x[3]`=제출 가능 상태. `led_y`(RGB LED)는 사용 안 함 |
 
 ---
@@ -126,6 +126,8 @@ TITLE(0) → INIT(1) → ANSWER(2) ─┬ 일치 → CORRECT(3) ─┬ 마지막
 
 ### 모듈 설명
 
+🟦 = 모니터(VGA) 출력과 관련된 모듈
+
 | 파일 | 역할 |
 |---|---|
 | `top_board.v` | 최상위. 모든 모듈을 연결하고, 1kHz 카운터, 레벨 2의 MUX 계산(`mux_up/low/8/out`), 정답 판정(`match`, `ans_ok`), 7세그·LED 배치를 담당 |
@@ -133,16 +135,16 @@ TITLE(0) → INIT(1) → ANSWER(2) ─┬ 일치 → CORRECT(3) ─┬ 마지막
 | `btn_pulse.v` | 디바운스 + 원펄스. 1kHz 틱마다 입력을 보고, 안정 상태와 다른 값이 `STABLE`(10)번 연속 유지되면 상태를 바꿈. 눌림(0→1)이 확정되는 순간 1클럭 펄스 출력 |
 | `control_fsm.v` | 게임 흐름 Moore FSM (2절 참고) |
 | `score_unit.v` | 문제 번호 `qnum`(0~4), 레벨(`qnum<3`이면 1, 아니면 2), 목숨, 점수, 최고점, 문제별 오답 횟수 `wrongs`(최대 3)와 획득 점수 `pts` |
-| `puzzle_rom.v` | `qnum`으로 고르는 고정 문제표. 레벨 1은 정답 게이트 코드 `g1`, 레벨 2는 MUX 입력 `d0-d3`, `e0-e3`과 목표 `tgt` |
+| `puzzle_rom.v` | `qnum`으로 고르는 고정 문제표. 레벨 1은 정답 게이트 코드 `g1`, 레벨 2는 MUX 입력 `d0~d3`, `e0~e3`과 목표 `tgt` |
 | `answer_reg.v` | 레벨 1에서 플레이어가 고른 기본 게이트(AND/OR/XOR)를 래치하고, `SW0`(NOT)은 실시간으로 반영해 `a_g1 = {NOT, base}` 출력. 아직 고르지 않았으면 `111` |
 | `gate_unit.v` | 3비트 코드로 종류가 정해지는 2입력 게이트 (아래 표) |
 | `kmap_val.v` | 게이트 하나의 2x2 진리표 `val[{A,B}] = gate(A,B)`. 화면의 K-map을 그리는 데 사용 |
-| `vga_sync.v` | 25MHz 픽셀 enable(`pix_en`) 생성, 800x525 타이밍, 좌표 `x,y`, `hs/vs/active` |
-| `renderer.v` | text > shape > background 우선순위로 합성하는 3단 파이프라인 (4절 참고) |
-| `text_gen.v` | 80열x30행 문자 격자에서 `(col,row)`마다 ASCII 문자와 색 속성을 결정 (모든 화면 문구가 여기에 있음) |
-| `shape_gen.v` | 도형 레이어: 게이트 기호·입력선·NOT 버블·K-map 칸(레벨 1), MUX 사다리꼴·배선·선택 경로 강조(레벨 2), 정답/오답 테두리, 제목·종료 화면 장식 상자 |
-| `gate_sprite.v` | AND/OR/XOR 외곽선 비트맵(32x40) — `gen_sprite.py`로 생성 |
-| `font_rom.v` | 8x16 폰트 — `gen_font.py`로 생성 (`text_gen.v`에 나오는 글자만 포함) |
+| 🟦 `vga_sync.v` | 25MHz 픽셀 enable(`pix_en`) 생성, 800x525 타이밍, 좌표 `x,y`, `hs/vs/active` |
+| 🟦 `renderer.v` | text > shape > background 우선순위로 합성하는 3단 파이프라인 (4절 참고) |
+| 🟦 `text_gen.v` | 80열x30행 문자 격자에서 `(col,row)`마다 ASCII 문자와 색 속성을 결정 (모든 화면 문구가 여기에 있음) |
+| 🟦 `shape_gen.v` | 도형 레이어: 게이트 기호·입력선·NOT 버블·K-map 칸(레벨 1), MUX 사다리꼴·배선·선택 경로 강조(레벨 2), 정답/오답 테두리, 제목·종료 화면 장식 상자 |
+| 🟦 `gate_sprite.v` | AND/OR/XOR 외곽선 비트맵(32x40) — `gen_sprite.py`로 생성 |
+| 🟦 `font_rom.v` | 8x16 폰트 — `gen_font.py`로 생성 (`text_gen.v`에 나오는 글자만 포함) |
 | `seg7_driver.v` | 8자리 7세그 다중화 구동 (1kHz로 자리를 순환, 0~9 표시, 자리별 blank) |
 | `bin2bcd.v` | Double-Dabble 방식 10비트 이진수 → 3자리 BCD (점수, 최고점, 문제 점수 표시용) |
 
@@ -159,6 +161,33 @@ TITLE(0) → INIT(1) → ANSWER(2) ─┬ 일치 → CORRECT(3) ─┬ 마지막
 ---
 
 ## 4. 화면 출력 (VGA)
+
+### 모니터(VGA) 관련 모듈
+
+파란색 노드가 모니터 출력과 관련된 모듈입니다.
+
+```mermaid
+flowchart LR
+    classDef vga fill:#cfe8ff,stroke:#1f6feb,color:#000
+    classDef other fill:#eeeeee,stroke:#888888,color:#000
+
+    TOP["top_board<br/>(state, level, qnum, ...)"]:::other
+    VS["vga_sync"]:::vga
+    R["renderer"]:::vga
+    T["text_gen"]:::vga
+    F["font_rom"]:::vga
+    S["shape_gen"]:::vga
+    G["gate_sprite"]:::vga
+    MON(["VGA 모니터<br/>VGA_R/G/B, VGA_HS, VGA_VS"]):::other
+
+    TOP --> R
+    VS -- "x, y, hs, vs, active" --> R
+    R --> T
+    T --> F
+    R --> S
+    S --> G
+    R --> MON
+```
 
 ### 타이밍
 - 640x480 @ 60Hz. 가로 800 = 640(표시) + 16 + 96(HS) + 48, 세로 525 = 480(표시) + 10 + 2(VS) + 33. HS, VS는 active-low.
@@ -185,7 +214,7 @@ HS, VS, active도 같은 3단을 통과하므로 문자가 밀리지 않습니�
 ### 화면별 내용
 - **TITLE**: 제목, 규칙 한 줄 설명, `PRESS CENTER BUTTON TO START`, `HIGH SCORE`
 - **레벨 1 문제 화면**: 상단 정보줄(`LEVEL`, `Q n/5`, `LIVES`, `SCORE`, `BEST`), 게이트 기호와 이름, `KARNAUGH MAP OF F`(2x2), 조작 안내
-- **레벨 2 문제 화면**: 목표(`GOAL`), 입력 값(D0-D7 또는 D0-D3/E0-E3), MUX 도형과 배선, 현재 `ABC` 값, `OUT`
+- **레벨 2 문제 화면**: 목표(`GOAL`), 입력 값(D0~D7 또는 D0~D3/E0~E3), MUX 도형과 배선, 현재 `ABC` 값, `OUT`
 - **CORRECT / WRONG**: 획득 점수 또는 안내 문구, 테두리 색(정답 초록, 오답 빨강)
 - **END**: `STAGE CLEAR!` 또는 `GAME OVER`, `FINAL SCORE`, `HIGH SCORE`
 
