@@ -7,7 +7,7 @@
 //   bc is a 1-clock pulse of the centre button.
 //   In ANSWER the centre button submits, but only when every gate has been set (ans_ok).
 //   'match' = the player's circuit has the same truth table as the hidden circuit.
-//   State numbers are shared with text_gen / shape_gen / status_led (2,3,4,6 are unused).
+//   State numbers are shared with text_gen / shape_gen / status_led.
 //   Signals that must change only once (score, lives) are 1 only in the first
 //   clock after entering the state (the 'entering' flag).
 //------------------------------------------------------------------------------
@@ -26,8 +26,7 @@ module control_fsm (
     output wire       score_add,
     output wire       life_dec,
     output wire       upd_best,
-    output reg        q_adv,
-    output reg  [1:0] snd_sel
+    output reg        q_adv
 );
     localparam S_TITLE   = 4'd0,
                S_INIT    = 4'd1,
@@ -71,14 +70,4 @@ module control_fsm (
     assign score_add = (state == S_CORRECT) && entering;
     assign life_dec  = (state == S_WRONG)   && entering;
     assign upd_best  = (state == S_END)     && entering;
-
-    // sound: 1 correct, 2 wrong / game over, 3 clear
-    always @* begin
-        case (state)
-            S_CORRECT: snd_sel = 2'd1;
-            S_WRONG:   snd_sel = 2'd2;
-            S_END:     snd_sel = lives_zero ? 2'd2 : 2'd3;
-            default:   snd_sel = 2'd0;
-        endcase
-    end
 endmodule

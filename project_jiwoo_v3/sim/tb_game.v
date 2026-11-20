@@ -1,6 +1,6 @@
 `timescale 1ns / 1ps
 //------------------------------------------------------------------------------
-// tb_game : plays one whole game on top_bbd (fast timing parameters)
+// tb_game : plays one whole game on top_board (fast timing parameters)
 //   Level 1 : BTNU = AND, BTNL = OR, BTNR = XOR, SW0 = NOT, BTNC = submit / next
 //   Level 2 : SW3 = A, SW2 = B (both 4:1 MUX), SW1 = C (2:1 MUX), SW4 raised = submit / next
 //   Scenario:
@@ -15,18 +15,17 @@ module tb_game;
     reg clk = 0, rstn = 0;
     reg bc = 0, bu = 0, bl = 0, br = 0;
     reg [4:0] sw = 5'd0;                 // {SW4, SW3, SW2, SW1, SW0}
-    wire [15:0] led;
-    wire [7:0]  an;
+    wire [3:0]  led_x, led_y;
+    wire [6:0]  seg;
+    wire [7:0]  digit;
     wire [3:0]  vr, vg, vb;
     wire hs, vs;
 
-    top_bbd #(.DIV_1M(2), .DIV_1K(4), .DB_STABLE(3), .NOTE_MS(1)) dut (
-        .CLK100MHZ(clk), .CPU_RESETN(rstn), .SW(sw),
+    top_board #(.DIV_1M(2), .DIV_1K(4), .DB_STABLE(3)) dut (
+        .clk(clk), .rst(rstn), .x(sw[3:0]), .sw4(sw[4]),
         .BTNC(bc), .BTNU(bu), .BTNL(bl), .BTNR(br),
-        .LED(led), .LED16_R(), .LED16_G(), .LED16_B(),
-        .CA(), .CB(), .CC(), .CD(), .CE(), .CF(), .CG(), .DP(),
-        .AN(an), .VGA_R(vr), .VGA_G(vg), .VGA_B(vb), .VGA_HS(hs), .VGA_VS(vs),
-        .AUD_PWM(), .AUD_SD()
+        .led_x(led_x), .led_y(led_y), .seg(seg), .digit(digit),
+        .VGA_R(vr), .VGA_G(vg), .VGA_B(vb), .VGA_HS(hs), .VGA_VS(vs)
     );
 
     always #5 clk = ~clk;

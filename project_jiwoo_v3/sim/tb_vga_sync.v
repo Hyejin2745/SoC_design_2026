@@ -9,7 +9,7 @@ module tb_vga_sync;
     wire [9:0]  x, y;
     wire        hs, vs, active;
 
-    clk_en u_en (clk, rst, en25, , );   // en1m and en1k are left unconnected
+    clk_en u_en (clk, rst, en25, );   // en1k is left unconnected
     vga_sync dut (
         clk,                        // clk
         rst,                        // rst
