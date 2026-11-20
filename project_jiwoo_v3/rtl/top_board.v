@@ -145,7 +145,7 @@ module top_board #(
     // VGA
     //--------------------------------------------------------------------------
     wire [9:0] vx, vy;
-    wire       v_hs, v_vs, v_active;
+    wire       en25, v_hs, v_vs, v_active;
     vga_sync u_vga (clk, rst, en25, vx, vy, v_hs, v_vs, v_active);
 
     renderer u_render (
