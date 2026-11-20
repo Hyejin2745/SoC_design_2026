@@ -1,7 +1,7 @@
 # Karnaugh Gate Quiz (Nexys4 DDR, Verilog)
 
 카르노 맵(K-map)을 보고 숨겨진 논리 게이트를 맞히는 퀴즈(레벨 1)와, MUX 선택 신호를 조절해 목표 숫자를 출력시키는 퀴즈(레벨 2)를 FPGA(Nexys4 DDR)에서 VGA 화면으로 즐기는 게임입니다.
-프레임 버퍼 없이 좌표마다 문자·도형을 조합 논리로 만들어 VGA(640x480@60Hz)로 내보냅니다. 클럭은 100MHz 하나만 쓰고, 느린 동작은 enable 펄스로 만듭니다.
+프레임 버퍼 없이 좌표마다 문자·도형을 조합 논리로 만들어 VGA(640x480@60Hz)로 내보냅니다. 클럭은 100MHz 하나만 쓰고, 느린 동작은 enable 펄스(25MHz 픽셀, 1kHz 틱)로 만듭니다.
 
 ## 게임 규칙
 
@@ -34,9 +34,9 @@ project_jiwoo.xpr   Vivado 프로젝트
 ```
 top_board
  ├ 입력   sync_ff ─ btn_pulse                  (버튼 4개 + SW4)
- ├ 타이밍 clk_en                               (en25: VGA 픽셀, en1k: 디바운스·7세그 스캔)
+ ├ 타이밍 1kHz 카운터(top 내부)                (디바운스·7세그 스캔), en25는 vga_sync가 생성
  ├ 게임   control_fsm ⇄ score_unit
- │        puzzle_rom ─┬ answer_reg, kmap_val ×2 ─ (게이트 일치 비교)   레벨 1
+ │        puzzle_rom ─┬ answer_reg, kmap_val ─ (게이트 코드 일치 비교)   레벨 1
  │                    └ MUX 선택 로직 (top_board 안)                   레벨 2
  ├ 화면   vga_sync ─ renderer ─┬ text_gen ─ font_rom
  │                             └ shape_gen ─ gate_sprite
@@ -49,15 +49,14 @@ top_board
 |---|---|
 | `top_board.v` | 최상위. 모든 모듈을 연결하고, 레벨 2의 MUX 계산(`mux_up/low/8/out`)과 정답 판정(`match`, `ans_ok`), LED·7세그 배치를 담당 |
 | `sync_ff.v` | 외부 입력을 FF 2단으로 클럭에 동기화 |
-| `clk_en.v` | `en25`(25MHz)와 `en1k`(1kHz) enable 펄스 생성 |
 | `btn_pulse.v` | 버튼 디바운스 + 원펄스: 1kHz로 샘플링해 STABLE(10)번 연속 같은 값일 때만 상태 변경, 눌림(0→1) 순간 1클럭 펄스 |
 | `control_fsm.v` | 게임 흐름 Moore FSM: `TITLE(0) → INIT(1) → ANSWER(5) → CORRECT(7) / WRONG(8) → END(9)`. 점수·목숨은 상태 진입 첫 클럭에만 갱신(`entering`) |
 | `score_unit.v` | 문제 번호 `qnum`(0~4), 레벨, 목숨, 점수, 최고점, 문제별 오답 횟수 |
 | `puzzle_rom.v` | 문제 번호로 고르는 고정 ROM (정답 게이트 코드, MUX 입력값 `d0~d3`/`e0~e3`, 목표 숫자) |
 | `answer_reg.v` | 플레이어가 고른 게이트 래치 (`{NOT, base}`, 미선택이면 `111`) |
 | `gate_unit.v` | 3비트 코드(`[2]`=반전, `[1:0]`=AND/OR/XOR)로 종류가 정해지는 2입력 게이트 |
-| `kmap_val.v` | 게이트 하나의 2x2 진리표 `val[{A,B}]`. 화면의 K-map과 정답 비교가 같은 값을 사용 |
-| `vga_sync.v` | 800x525 타이밍, 좌표 `x,y`, `hs/vs/active` |
+| `kmap_val.v` | 게이트 하나의 2x2 진리표 `val[{A,B}]`. 화면의 K-map 표시에 사용 (정답 판정은 게이트 코드 비교) |
+| `vga_sync.v` | 25MHz 픽셀 enable(`pix_en`) 생성, 800x525 타이밍, 좌표 `x,y`, `hs/vs/active` |
 | `renderer.v` | text > shape > background 순으로 합성하는 3단 파이프라인 (문자·도형 저장 → font_rom 읽기 → 색 선택) |
 | `text_gen.v` | 80x30 문자 격자에서 `(col,row)`마다 ASCII 문자와 색 속성을 결정 (모든 화면 문구) |
 | `shape_gen.v` | 도형 레이어: 게이트 기호·입력선·NOT 버블·K-map 칸(레벨 1), MUX 도형·배선·선택 경로 강조(레벨 2), 정답/오답 테두리 |

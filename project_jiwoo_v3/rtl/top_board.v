@@ -19,8 +19,7 @@
 //   7-seg   : [7]level [6]question no. [3]lives [2:0]score
 //------------------------------------------------------------------------------
 module top_board #(
-    parameter DIV_1M    = 100,    // 100MHz / 100 = 1MHz
-    parameter DIV_1K    = 1000,   // 1MHz / 1000 = 1kHz
+    parameter DIV_1K    = 100000, // 100MHz / 100000 = 1kHz tick
     parameter DB_STABLE = 10      // debounce: 10 consecutive 1kHz samples = 10ms
 ) (
     input  wire       clk,
@@ -58,10 +57,12 @@ module top_board #(
     sync_ff #(4) u_btn_sync (clk, {BTNC, BTNU, BTNL, BTNR}, btn_s);
 
     //--------------------------------------------------------------------------
-    // enable pulses, then debounce + one-pulse for 4 buttons and SW4
+    // 1kHz tick (debounce sampling, 7-seg scan), then debounce + one-pulse for 4 buttons and SW4
+    //   (the 25MHz pixel enable en25 comes from vga_sync)
     //--------------------------------------------------------------------------
-    wire en25, en1k;
-    clk_en #(DIV_1M, DIV_1K) u_clk_en (clk, rst_i, en25, en1k);
+    reg [16:0] c1k;
+    wire       en1k = (c1k == DIV_1K - 1);
+    always @(posedge clk) c1k <= (rst_i || en1k) ? 17'd0 : c1k + 17'd1;
 
     wire bc, bu, bl, br, s4;
 
@@ -108,15 +109,14 @@ module top_board #(
     puzzle_rom u_puz (qnum, h_g1, d0, d1, d2, d3, e0, e1, e2, e3, tgt);
 
     //--------------------------------------------------------------------------
-    // level 1 : player's gate and truth tables
+    // level 1 : player's gate and the K-map of the hidden gate
     //--------------------------------------------------------------------------
     wire [2:0] a_g1;
     wire       gate_set;
     answer_reg u_ans (clk, rst_i, clr_round, ans_edit, bu, bl, br, sw_not, a_g1, gate_set);
 
-    wire [3:0] hid_val, ans_val;
+    wire [3:0] hid_val;
     kmap_val u_hid   (h_g1, hid_val);
-    kmap_val u_ans_v (a_g1, ans_val);
 
     //--------------------------------------------------------------------------
     // level 2 : two 4:1 MUX (same select A,B) -> 2:1 MUX (select C)
@@ -137,7 +137,7 @@ module top_board #(
 
     // submit is allowed when a gate has been chosen (level 1) or always (level 2)
     assign ans_ok = (level == 2'd1) ? gate_set : 1'b1;
-    assign match  = (level == 2'd1) ? (hid_val == ans_val) : (mux_out == tgt);
+    assign match  = (level == 2'd1) ? (h_g1 == a_g1) : (mux_out == tgt);
 
     //--------------------------------------------------------------------------
     // score -> decimal

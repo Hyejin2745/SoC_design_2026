@@ -1,7 +1,7 @@
 `timescale 1ns / 1ps
 //------------------------------------------------------------------------------
 // kmap_val : 2x2 truth table of one gate. val[{A,B}] = gate(A,B).
-//   The K-map shown on screen and the answer check use exactly the same table.
+//   Used for the K-map shown on screen.
 //------------------------------------------------------------------------------
 module kmap_val (
     input  wire [2:0] g,
