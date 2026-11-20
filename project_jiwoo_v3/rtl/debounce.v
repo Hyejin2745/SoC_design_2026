@@ -1,6 +1,6 @@
 `timescale 1ns / 1ps
 //------------------------------------------------------------------------------
-// debounce : button bounce removal
+// debounce : button bounce removal (din must already be synchronized, see sync_ff)
 //   Looks at the input on every tick (1kHz); if a value different from the current output
 //   is held for STABLE consecutive samples, the output changes. (STABLE=10 -> about 10ms)
 //------------------------------------------------------------------------------
@@ -13,27 +13,20 @@ module debounce #(
     input  wire din,
     output reg  dout
 );
-    reg       s0, s1;
-    reg [7:0] cnt;
+    reg [3:0] cnt;
 
     always @(posedge clk) begin
         if (rst) begin
-            s0   <= 1'b0;
-            s1   <= 1'b0;
-            cnt  <= 8'd0;
+            cnt  <= 4'd0;
             dout <= 1'b0;
-        end else begin
-            s0 <= din;
-            s1 <= s0;
-            if (tick) begin
-                if (s1 == dout) begin
-                    cnt <= 8'd0;
-                end else if (cnt == STABLE - 1) begin
-                    dout <= s1;
-                    cnt  <= 8'd0;
-                end else begin
-                    cnt <= cnt + 8'd1;
-                end
+        end else if (tick) begin
+            if (din == dout) begin
+                cnt <= 4'd0;
+            end else if (cnt == STABLE - 1) begin
+                dout <= din;
+                cnt  <= 4'd0;
+            end else begin
+                cnt <= cnt + 4'd1;
             end
         end
     end
