@@ -58,25 +58,18 @@ module top_board #(
     sync_ff #(4) u_btn_sync (clk, {BTNC, BTNU, BTNL, BTNR}, btn_s);
 
     //--------------------------------------------------------------------------
-    // enable pulses, then debounce -> onepulse for 4 buttons and SW4
+    // enable pulses, then debounce + one-pulse for 4 buttons and SW4
     //--------------------------------------------------------------------------
     wire en25, en1k;
     clk_en #(DIV_1M, DIV_1K) u_clk_en (clk, rst_i, en25, en1k);
 
-    wire bc_db, bu_db, bl_db, br_db, s4_db;
     wire bc, bu, bl, br, s4;
 
-    debounce #(DB_STABLE) u_db_c (clk, rst_i, en1k, btn_s[3], bc_db);
-    debounce #(DB_STABLE) u_db_u (clk, rst_i, en1k, btn_s[2], bu_db);
-    debounce #(DB_STABLE) u_db_l (clk, rst_i, en1k, btn_s[1], bl_db);
-    debounce #(DB_STABLE) u_db_r (clk, rst_i, en1k, btn_s[0], br_db);
-    debounce #(DB_STABLE) u_db_s (clk, rst_i, en1k, sw[4],    s4_db);
-
-    onepulse u_op_c (clk, rst_i, bc_db, bc);
-    onepulse u_op_u (clk, rst_i, bu_db, bu);
-    onepulse u_op_l (clk, rst_i, bl_db, bl);
-    onepulse u_op_r (clk, rst_i, br_db, br);
-    onepulse u_op_s (clk, rst_i, s4_db, s4);
+    btn_pulse #(DB_STABLE) u_bp_c (clk, rst_i, en1k, btn_s[3], bc);
+    btn_pulse #(DB_STABLE) u_bp_u (clk, rst_i, en1k, btn_s[2], bu);
+    btn_pulse #(DB_STABLE) u_bp_l (clk, rst_i, en1k, btn_s[1], bl);
+    btn_pulse #(DB_STABLE) u_bp_r (clk, rst_i, en1k, btn_s[0], br);
+    btn_pulse #(DB_STABLE) u_bp_s (clk, rst_i, en1k, sw[4],    s4);
 
     //--------------------------------------------------------------------------
     // control FSM

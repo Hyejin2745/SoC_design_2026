@@ -33,7 +33,7 @@ project_jiwoo.xpr   Vivado 프로젝트
 
 ```
 top_board
- ├ 입력   sync_ff ─ debounce ─ onepulse        (버튼 4개 + SW4)
+ ├ 입력   sync_ff ─ btn_pulse                  (버튼 4개 + SW4)
  ├ 타이밍 clk_en                               (en25: VGA 픽셀, en1k: 디바운스·7세그 스캔)
  ├ 게임   control_fsm ⇄ score_unit
  │        puzzle_rom ─┬ answer_reg, kmap_val ×2 ─ (게이트 일치 비교)   레벨 1
@@ -50,8 +50,7 @@ top_board
 | `top_board.v` | 최상위. 모든 모듈을 연결하고, 레벨 2의 MUX 계산(`mux_up/low/8/out`)과 정답 판정(`match`, `ans_ok`), LED·7세그 배치를 담당 |
 | `sync_ff.v` | 외부 입력을 FF 2단으로 클럭에 동기화 |
 | `clk_en.v` | `en25`(25MHz)와 `en1k`(1kHz) enable 펄스 생성 |
-| `debounce.v` | 1kHz로 샘플링해 STABLE(10)번 연속 같은 값일 때만 출력 변경 |
-| `onepulse.v` | 입력이 0→1일 때 1클럭 펄스 |
+| `btn_pulse.v` | 버튼 디바운스 + 원펄스: 1kHz로 샘플링해 STABLE(10)번 연속 같은 값일 때만 상태 변경, 눌림(0→1) 순간 1클럭 펄스 |
 | `control_fsm.v` | 게임 흐름 Moore FSM: `TITLE(0) → INIT(1) → ANSWER(5) → CORRECT(7) / WRONG(8) → END(9)`. 점수·목숨은 상태 진입 첫 클럭에만 갱신(`entering`) |
 | `score_unit.v` | 문제 번호 `qnum`(0~4), 레벨, 목숨, 점수, 최고점, 문제별 오답 횟수 |
 | `puzzle_rom.v` | 문제 번호로 고르는 고정 ROM (정답 게이트 코드, MUX 입력값 `d0~d3`/`e0~e3`, 목표 숫자) |
