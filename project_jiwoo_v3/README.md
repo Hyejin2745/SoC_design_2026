@@ -46,12 +46,12 @@
 | `SW3` | A |
 | `SW2` | B |
 | `SW1` | C |
-| `SW4` 올림 (또는 `BTNC`) | 제출 / 다음 화면 |
+
+제출 / 다음 화면은 레벨 1과 같이 `BTNC`로 합니다.
 
 - **Q4 (8:1 MUX)**: 입력 번호 = `{A,B,C}` (A가 최상위 비트). 예) `ABC=110` → D6.
 - **Q5 (4:1 MUX ×2 + 2:1 MUX)**: A, B가 두 4:1 MUX의 **공통 선택 신호**이고, C가 마지막 2:1 MUX의 선택 신호입니다. 출력 = `C ? 아래MUX[AB] : 위MUX[AB]`.
 - 풀이 중에는 현재 `ABC` 값만 표시되고 출력은 `OUT = ?`로 가려져 있습니다. 제출 후 결과 화면에서 선택된 입력(초록)과 신호 경로(노랑), 실제 출력값이 공개됩니다.
-- `SW4`는 **올리는 순간**에만 제출됩니다. 다음 화면으로 넘어가려면 내렸다가 다시 올립니다.
 
 ### 점수와 목숨
 
@@ -72,8 +72,8 @@
 |---|---|
 | 리셋 | `CPU_RESETN` (누르면 0) |
 | VGA | 640x480 @ 60Hz, RGB 각 4비트 |
-| 7세그 | `AN7`=레벨, `AN6`=문제 번호(1~5), `AN3`=목숨, `AN2~AN0`=점수. `AN5`, `AN4`는 꺼짐 |
-| LED | `led_x[2:0]`=목숨 (3개면 모두 켜짐), `led_x[3]`=제출 가능 상태. `led_y`(RGB LED)는 사용 안 함 |
+| 7세그 | `AN2~AN0`에 현재 점수(3자리). 나머지 자리는 꺼짐 |
+| LED | `led_x[2:0]`=남은 목숨 (3개면 모두 켜짐, 목숨은 7세그에 나오지 않음), `led_x[3]`=제출 가능 상태. `led_y`(RGB LED)는 사용 안 함 |
 
 ---
 
@@ -97,7 +97,7 @@ TITLE(0) → INIT(1) → ANSWER(2) ─┬ 일치 → CORRECT(3) ─┬ 마지막
                        └─────────────────────────────┘ 목숨 남음 → ANSWER(2)
 ```
 
-- `go` 신호 = `BTNC | (레벨 2 & SW4 펄스)`. TITLE과 END에서는 `BTNC`만 사용됩니다.
+- `go`는 중앙 버튼(`BTNC`)의 1클럭 펄스입니다. 모든 상태 전이는 이 하나로 일어납니다.
 - `ans_ok`: 레벨 1은 게이트를 하나라도 골랐을 때만 1, 레벨 2는 항상 1.
 - `match`: 레벨 1은 `정답 게이트 코드 == 플레이어 게이트 코드`, 레벨 2는 `MUX 출력 == 목표 숫자`.
 - 점수·목숨처럼 **딱 한 번만** 바뀌어야 하는 동작은 상태에 들어온 첫 클럭에만 1이 되는 `entering` 플래그로 만듭니다 (`score_add`, `life_dec`, `upd_best`).
@@ -119,7 +119,7 @@ TITLE(0) → INIT(1) → ANSWER(2) ─┬ 일치 → CORRECT(3) ─┬ 마지막
                     │    answer_reg ─→ a_g1 ────────────────┘   match
                     └ d0..d3, e0..e3, tgt ─ MUX 선택 로직 ─→ mux_out ─ (mux_out == tgt) ─ match
 
- score/best/pts ─ bin2bcd ─ Display8 ─→ 7세그
+ score/best/pts ─ bin2bcd ─ Display3 ─→ 7세그
  vga_sync ─ renderer ─┬ text_gen ─ font_rom
                       └ shape_gen ─ gate_sprite          ─→ VGA
 ```
@@ -145,7 +145,7 @@ TITLE(0) → INIT(1) → ANSWER(2) ─┬ 일치 → CORRECT(3) ─┬ 마지막
 | 🟦 `shape_gen.v` | 도형 레이어: 게이트 기호·입력선·NOT 버블·K-map 칸(레벨 1), MUX 사다리꼴·배선·선택 경로 강조(레벨 2), 정답/오답 테두리, 제목·종료 화면 장식 상자 |
 | 🟦 `gate_sprite.v` | AND/OR/XOR 외곽선 비트맵(32x40) — `gen_sprite.py`로 생성 |
 | 🟦 `font_rom.v` | 8x16 폰트 — `gen_font.py`로 생성 (`text_gen.v`에 나오는 글자만 포함) |
-| `Display8.v` | 수업 `Display4.v`를 8자리로 확장. 14비트 카운터(10000클럭)로 자릿수 선택(`digit`, one-cold)을 순환시키고, 선택된 자리의 값(`dec`)을 active-low 패턴(`seg`)으로 변환. 값이 `4'hF`인 자리는 꺼짐 |
+| `Display3.v` | 수업 `Display4.v`를 3자리(`AN2~AN0`)로 확장. 14비트 카운터(10000클럭)로 자릿수 선택(`digit`, one-cold)을 순환시키고, 선택된 자리의 값(`dec`)을 active-low 패턴(`seg`)으로 변환. 점수만 표시하고 `AN7~AN3`은 항상 꺼짐 |
 | `bin2bcd.v` | Double-Dabble 방식 10비트 이진수 → 3자리 BCD (점수, 최고점, 문제 점수 표시용) |
 
 ### 게이트 코드 (`gate_unit`)
@@ -225,7 +225,7 @@ HS, VS, active도 같은 3단을 통과하므로 문자가 밀리지 않습니�
 | 수업 코드 | 이 프로젝트 | 같은 점 / 바뀐 점 |
 |---|---|---|
 | `Button.v` | `Button.v` | 3단 FF + `pls = btn2 & !btn3` 구조 그대로. 버튼 떨림 방지용 잠금 카운터(`LOCK`) 추가 |
-| `Display4.v` | `Display8.v` | 클럭 분주 카운터, one-cold `digit`, `dec` 선택, 7세그 패턴 `case` 구조 그대로. 2자리 → 8자리, 파생 클럭 대신 enable(`tick`) 사용 |
+| `Display4.v` | `Display3.v` | 클럭 분주 카운터, one-cold `digit`, `dec` 선택, 7세그 패턴 `case` 구조 그대로. 2자리 → 3자리, 파생 클럭 대신 enable(`tick`) 사용 |
 | (Double-Dabble `s1~s4`) | `bin2bcd.v` | 같은 shift-and-add-3 알고리즘. 점수가 최대 500이라 10비트로 확장해 반복문으로 작성 |
 | Lab 2 `Mux`, `Mux4to1`, `Mux8to1` | `Mux.v`, `Mux4to1.v`, `Mux8to1.v` | 수업 코드 그대로 사용. `top_board.v`가 레벨 2에서 인스턴스로 연결 (Q5: 4:1 두 개 + 2:1, Q4: 8:1) |
 | Lab 5 `MooreStateM.v` | `control_fsm.v` | `preState`/`nextState`, 동기 리셋 순차 블록, `case (preState)` 조합 블록(다음 상태 + Moore 출력) 구조 그대로. 상태가 6개이고 `OC` 출력 버퍼는 사용 안 함 |
@@ -235,7 +235,7 @@ HS, VS, active도 같은 3단을 통과하므로 문자가 밀리지 않습니�
 | `Nexys-4-DDR-Master.xdc` | `constraints/` | 같은 보드 제약 파일 |
 
 - **리셋**: 수업 코드처럼 active-low(`CPU_RESETN`을 그대로 모든 모듈의 `rst`로 연결, `if(!rst)`).
-- **스위치**: `SW0~SW3`은 수업의 `mode`, `din`처럼 top에서 직접 사용합니다. `SW4`(제출)와 버튼 4개만 `Button`을 거칩니다.
+- **스위치**: `SW0~SW3`은 수업의 `mode`, `din`처럼 top에서 직접 사용합니다. 버튼 4개(`BTNC/U/L/R`)만 `Button`을 거칩니다.
 - **버튼 잠금(`LOCK`)**: `DB_LOCK`(기본 1,000,000클럭 = 10ms) 파라미터로 바꿀 수 있고, 시뮬레이션에서는 작은 값을 씁니다.
 - **7세그**: 10000클럭마다 다음 자리로 넘어갑니다 (한 자리당 약 1.25kHz 갱신).
 - **25MHz 픽셀 enable**: `vga_sync.v` 안의 2비트 카운터가 만들고 `renderer`도 같은 신호를 씁니다.

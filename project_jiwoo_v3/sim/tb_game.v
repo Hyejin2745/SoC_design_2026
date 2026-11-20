@@ -2,7 +2,7 @@
 //------------------------------------------------------------------------------
 // tb_game : plays one whole game on top_board (fast timing parameters)
 //   Level 1 : BTNU = AND, BTNL = OR, BTNR = XOR, SW0 = NOT, BTNC = submit / next
-//   Level 2 : SW3 = A, SW2 = B (both 4:1 MUX), SW1 = C (2:1 MUX), SW4 raised = submit / next
+//   Level 2 : SW3 = A, SW2 = B (both 4:1 MUX), SW1 = C (2:1 MUX), BTNC = submit / next
 //   Scenario:
 //     Q1 (AND)  : empty submit ignored, OR -> WRONG, retry AND -> CORRECT (70 pts)
 //     Q2 (NOR)  : OR + SW0 -> CORRECT (100)
@@ -14,7 +14,7 @@
 module tb_game;
     reg clk = 0, rstn = 0;
     reg bc = 0, bu = 0, bl = 0, br = 0;
-    reg [4:0] sw = 5'd0;                 // {SW4, SW3, SW2, SW1, SW0}
+    reg [3:0] sw = 4'd0;                 // {SW3, SW2, SW1, SW0}
     wire [3:0]  led_x, led_y;
     wire [6:0]  seg;
     wire [7:0]  digit;
@@ -22,7 +22,7 @@ module tb_game;
     wire hs, vs;
 
     top_board #(.DB_LOCK(3)) dut (
-        .clk(clk), .rst(rstn), .x(sw[3:0]), .sw4(sw[4]),
+        .clk(clk), .rst(rstn), .x(sw),
         .BTNC(bc), .BTNU(bu), .BTNL(bl), .BTNR(br),
         .led_x(led_x), .led_y(led_y), .seg(seg), .digit(digit),
         .VGA_R(vr), .VGA_G(vg), .VGA_B(vb), .VGA_HS(hs), .VGA_VS(vs)
@@ -36,8 +36,6 @@ module tb_game;
     task press_u; begin bu = 1; repeat (150) @(posedge clk); bu = 0; repeat (150) @(posedge clk); end endtask
     task press_l; begin bl = 1; repeat (150) @(posedge clk); bl = 0; repeat (150) @(posedge clk); end endtask
     task press_r; begin br = 1; repeat (150) @(posedge clk); br = 0; repeat (150) @(posedge clk); end endtask
-    // SW4 up then down (the submit happens when it goes up)
-    task flip_sw4; begin sw[4] = 1; repeat (150) @(posedge clk); sw[4] = 0; repeat (150) @(posedge clk); end endtask
     task set_abc; input [2:0] v; begin sw[3] = v[2]; sw[2] = v[1]; sw[1] = v[0]; repeat (50) @(posedge clk); end endtask
 
     task expect_state;
@@ -92,22 +90,22 @@ module tb_game;
         expect_state(S_ANSWER, "Q4 answer");
         if (dut.level !== 2'd2) begin errors = errors + 1; $display("FAIL Q4 level=%0d", dut.level); end
         set_abc(3'b000);                           // D0 = 3, not the target 9
-        flip_sw4;
+        press_c;
         expect_state(S_WRONG, "Q4 wrong");
-        flip_sw4;                                  // retry
+        press_c;                                  // retry
         expect_state(S_ANSWER, "Q4 retry");
         set_abc(3'b110);                           // A=1 B=1 C=0 -> D6 = 9
         if (dut.mux_out !== 4'd9) begin errors = errors + 1; $display("FAIL mux_out=%0d expected 9", dut.mux_out); end
         expect_state(S_ANSWER, "Q4 not submitted yet");
-        flip_sw4;
+        press_c;
         expect_state(S_CORRECT, "Q4 correct");
-        flip_sw4;                                  // next question
+        press_c;                                  // next question
 
         expect_state(S_ANSWER, "Q5 answer");
         set_abc(3'b011);                           // A=0 B=1 C=1 -> E1 = 4
-        flip_sw4;
+        press_c;
         expect_state(S_CORRECT, "Q5 correct");
-        flip_sw4;                                  // last question -> end
+        press_c;                                  // last question -> end
 
         expect_state(S_END, "end");
         if (dut.score !== 10'd470) begin errors = errors + 1; $display("FAIL score=%0d expected 470", dut.score); end
@@ -116,7 +114,7 @@ module tb_game;
         expect_state(S_TITLE, "back to title");
 
         // game over path: three wrong answers on Q1
-        sw = 5'd0;
+        sw = 4'd0;
         press_c;
         repeat (3) begin press_l; press_c; press_c; end
         expect_state(S_END, "game over");

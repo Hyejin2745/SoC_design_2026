@@ -10,13 +10,13 @@
 //       Q4 : one 8:1 MUX (input number = {A,B,C}, A is the high bit)
 //       Q5 : two 4:1 MUX (same select A,B) + one 2:1 MUX (select C)
 //       x[3] (SW3) = A, x[2] (SW2) = B, x[1] (SW1) = C   (the output follows the switches at once)
-//       sw4 (SW4) raised = submit / next screen          (BTNC works as well)
+//       BTNC = submit / next screen
 //
 //   rst     : CPU_RESETN pin (active low: pressed = 0)
 //   led_x   : [2:0] lives, [3] ready to submit
 //   led_y   : unused (always off)
 //   seg     : {CA..CG}      digit : AN[7:0]
-//   7-seg   : [7]level [6]question no. [3]lives [2:0]score
+//   7-seg   : [2:0] score
 //------------------------------------------------------------------------------
 module top_board #(
     parameter DB_LOCK = 1_000_000   // button bounce lock: 1,000,000 clocks = 10ms (small in simulation)
@@ -24,7 +24,6 @@ module top_board #(
     input  wire       clk,
     input  wire       rst,
     input  wire [3:0] x,
-    input  wire       sw4,
     input  wire       BTNC,
     input  wire       BTNU,
     input  wire       BTNL,
@@ -48,27 +47,25 @@ module top_board #(
     wire [1:0] sel    = {x[3], x[2]};   // A, B (select of both 4:1 MUX)
     wire       csel   = x[1];           // C (select of the 2:1 MUX)
 
-    wire bc, bu, bl, br, s4;
+    wire bc, bu, bl, br;
 
     Button #(DB_LOCK) BT_C (clk, rst, BTNC, bc);
     Button #(DB_LOCK) BT_U (clk, rst, BTNU, bu);
     Button #(DB_LOCK) BT_L (clk, rst, BTNL, bl);
     Button #(DB_LOCK) BT_R (clk, rst, BTNR, br);
-    Button #(DB_LOCK) BT_S (clk, rst, sw4,  s4);
 
     //--------------------------------------------------------------------------
     // control FSM
-    //   'go' = submit / next screen. BTNC always works; SW4 works in level 2.
+    //   BTNC (bc) = submit / next screen
     //--------------------------------------------------------------------------
     wire [3:0] state;
     wire       game_clr, clr_round, ans_edit;
     wire       score_add, life_dec, upd_best, q_adv;
     wire       ans_ok, match, last_q, lives_zero;
     wire [1:0] level, lives;
-    wire       go = bc | ((level == 2'd2) & s4);
 
     control_fsm u_fsm (
-        clk, rst, go, ans_ok, match, last_q, lives_zero,
+        clk, rst, bc, ans_ok, match, last_q, lives_zero,
         state, game_clr, clr_round, ans_edit,
         score_add, life_dec, upd_best, q_adv
     );
@@ -128,14 +125,9 @@ module top_board #(
     bin2bcd u_bcd_pts   ({2'b00, pts},   bcd_pts);
 
     //--------------------------------------------------------------------------
-    // 7-segment : [7] level [6] question no. [3] lives [2:0] score (AN5, AN4 off)
+    // 7-segment : score (3 digits, AN2 AN1 AN0)
     //--------------------------------------------------------------------------
-    wire [31:0] seg_digits = { {2'b00, level},              // AN7
-                               {1'b0, qnum} + 4'd1,         // AN6
-                               8'hFF,                       // AN5, AN4 (off)
-                               {2'b00, lives},              // AN3
-                               bcd_score };                 // AN2..AN0
-    Display8 DP0 (clk, rst, seg_digits, seg, digit);
+    Display3 DP0 (clk, rst, bcd_score, seg, digit);
 
     //--------------------------------------------------------------------------
     // VGA
@@ -160,7 +152,7 @@ module top_board #(
     //--------------------------------------------------------------------------
     // LEDs
     //--------------------------------------------------------------------------
-    assign led_x = {(state == 4'd2) & ans_ok,                 // ready to submit
+    assign led_x = {ans_edit & ans_ok,                 // ready to submit
                     lives[1] & lives[0], lives[1], |lives};   // lives bar (3 lives = 111)
     assign led_y = 4'b0000;                                   // RGB LED not used
 endmodule

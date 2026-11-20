@@ -4,7 +4,7 @@
 //   TITLE(0) -> INIT(1) -> ANSWER(2) -> CORRECT(3) -> (INIT | END)
 //                                    -> WRONG(4)   -> (ANSWER | END)
 //   END(5) -> TITLE
-//   bc is a 1-clock pulse of the submit / next button (BTNC, or SW4 in level 2).
+//   bc is a 1-clock pulse of the submit / next button (BTNC).
 //   In ANSWER bc submits, but only when the answer is complete (ans_ok).
 //   'match' = the player's answer is the right one.
 //   State numbers are shared with text_gen / shape_gen / top_board.

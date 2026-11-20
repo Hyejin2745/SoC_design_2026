@@ -280,39 +280,13 @@ module text_gen (
                     end
 
                     S_CORRECT: begin
-                        if (r == 25) begin
-                            attr = 3'd2;
-                            if (c >= 2 && c < 10)       ch = S("CORRECT!", 8, c - 2);
-                            else if (c == 13)           ch = "+";
-                            else if (c == 14)           ch = (p2 == 4'd0) ? 8'h20 : dg(p2);
-                            else if (c == 15)           ch = dg(p1);
-                            else if (c == 16)           ch = dg(p0);
-                            else if (c >= 18 && c < 24) ch = S("POINTS", 6, c - 18);
-                        end
                         if (r == 26 && c >= 2 && c < 40)
                             ch = S("THE HIDDEN GATE IS SHOWN ABOVE", 30, c - 2);
-                        if (r == 28 && c >= 2 && c < 40) begin
-                            attr = 3'd5;
-                            ch = S("PRESS CENTER BUTTON TO CONTINUE", 31, c - 2);
-                        end
                     end
 
                     S_WRONG: begin
-                        if (r == 25) begin
-                            attr = 3'd3;
-                            if (c >= 2 && c < 8)        ch = S("WRONG!", 6, c - 2);
-                            else if (c >= 11 && c < 44) ch = S("YOUR GATE GIVES A DIFFERENT K-MAP", 33, c - 11);
-                        end
-                        if (r == 28) begin
-                            attr = 3'd5;
-                            if (lives_zero) begin
-                                if (c >= 2 && c < 40) ch = S("NO LIVES LEFT. PRESS CENTER BUTTON", 34, c - 2);
-                            end else begin
-                                if (c >= 2 && c < 12)       ch = S("LIVES LEFT", 10, c - 2);
-                                else if (c == 13)           ch = dg({2'b00, lives});
-                                else if (c >= 16 && c < 50) ch = S("PRESS CENTER BUTTON TO TRY AGAIN", 32, c - 16);
-                            end
-                        end
+                        if (r == 25 && c >= 11 && c < 44)
+                            ch = S("YOUR GATE GIVES A DIFFERENT K-MAP", 33, c - 11);
                     end
 
                     default: ;
@@ -425,51 +399,59 @@ module text_gen (
                         end
                         if (r == 28 && c >= 2 && c < 50) begin
                             attr = 3'd5;
-                            ch = S("RAISE SW4 TO SUBMIT  (OR CENTER BUTTON)", 39, c - 2);
+                            ch = S("PRESS CENTER BUTTON TO SUBMIT", 29, c - 2);
                         end
                     end
 
                     S_CORRECT: begin
-                        if (r == 25) begin
-                            attr = 3'd2;
-                            if (c >= 2 && c < 10)       ch = S("CORRECT!", 8, c - 2);
-                            else if (c == 13)           ch = "+";
-                            else if (c == 14)           ch = (p2 == 4'd0) ? 8'h20 : dg(p2);
-                            else if (c == 15)           ch = dg(p1);
-                            else if (c == 16)           ch = dg(p0);
-                            else if (c >= 18 && c < 24) ch = S("POINTS", 6, c - 18);
-                        end
                         if (r == 26 && c >= 2 && c < 40) begin
                             if (c < 23) ch = S("THE SELECTED INPUT IS", 21, c - 2);
                             else if (c == 24) ch = (mode8 || !csel) ? "D" : "E";
                             else if (c == 25) ch = mode8 ? dg({1'b0, sel, csel}) : dg({2'b00, sel});
                         end
-                        if (r == 28 && c >= 2 && c < 52) begin
-                            attr = 3'd5;
-                            ch = S("RAISE SW4 TO CONTINUE  (OR CENTER BUTTON)", 41, c - 2);
-                        end
                     end
 
                     S_WRONG: begin
-                        if (r == 25) begin
-                            attr = 3'd3;
-                            if (c >= 2 && c < 8)        ch = S("WRONG!", 6, c - 2);
-                            else if (c >= 11 && c < 40) ch = S("THE OUTPUT IS NOT THE TARGET", 28, c - 11);
-                        end
-                        if (r == 28) begin
-                            attr = 3'd5;
-                            if (lives_zero) begin
-                                if (c >= 2 && c < 40) ch = S("NO LIVES LEFT. PRESS CENTER BUTTON", 34, c - 2);
-                            end else begin
-                                if (c >= 2 && c < 12)       ch = S("LIVES LEFT", 10, c - 2);
-                                else if (c == 13)           ch = dg({2'b00, lives});
-                                else if (c >= 16 && c < 58) ch = S("RAISE SW4 TO TRY AGAIN  (OR CENTER BUTTON)", 42, c - 16);
-                            end
-                        end
+                        if (r == 25 && c >= 11 && c < 40)
+                            ch = S("THE OUTPUT IS NOT THE TARGET", 28, c - 11);
                     end
 
                     default: ;
                 endcase
+            end
+
+            //==================================================================
+            // result messages shared by both levels
+            //==================================================================
+            if (state == S_CORRECT) begin
+                if (r == 25) begin
+                    attr = 3'd2;
+                    if (c >= 2 && c < 10)       ch = S("CORRECT!", 8, c - 2);
+                    else if (c == 13)           ch = "+";
+                    else if (c == 14)           ch = (p2 == 4'd0) ? 8'h20 : dg(p2);
+                    else if (c == 15)           ch = dg(p1);
+                    else if (c == 16)           ch = dg(p0);
+                    else if (c >= 18 && c < 24) ch = S("POINTS", 6, c - 18);
+                end
+                if (r == 28 && c >= 2 && c < 40) begin
+                    attr = 3'd5;
+                    ch = S("PRESS CENTER BUTTON TO CONTINUE", 31, c - 2);
+                end
+            end else if (state == S_WRONG) begin
+                if (r == 25) begin
+                    attr = 3'd3;
+                    if (c >= 2 && c < 8) ch = S("WRONG!", 6, c - 2);
+                end
+                if (r == 28) begin
+                    attr = 3'd5;
+                    if (lives_zero) begin
+                        if (c >= 2 && c < 40) ch = S("NO LIVES LEFT. PRESS CENTER BUTTON", 34, c - 2);
+                    end else begin
+                        if (c >= 2 && c < 12)       ch = S("LIVES LEFT", 10, c - 2);
+                        else if (c == 13)           ch = dg({2'b00, lives});
+                        else if (c >= 16 && c < 50) ch = S("PRESS CENTER BUTTON TO TRY AGAIN", 32, c - 16);
+                    end
+                end
             end
         end
     end

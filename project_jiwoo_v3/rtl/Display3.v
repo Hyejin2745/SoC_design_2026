@@ -1,17 +1,18 @@
 `timescale 1ns / 1ps
 //------------------------------------------------------------------------------
-// Display8 : 8-digit 7-segment display (the Lab10 Display4.v extended from 2 to 8 digits)
+// Display3 : 3-digit 7-segment display (the Lab10 Display4.v with 3 digits: AN2, AN1, AN0)
 //   Same structure as the lecture code:
 //     - a counter divides the clock (every 10000 clocks = 100us the next digit is selected)
-//     - digit is the one-cold digit select (AN), it rotates 11111110 -> 11111101 -> ...
+//     - digit is the one-cold digit select (AN), it rotates 11111110 -> 11111101 -> 11111011 -> ...
+//       (AN7 ~ AN3 stay off)
 //     - dec = the 4-bit value of the selected digit, seg = active-low pattern (seg = {CA..CG})
-//   digits[4*i +: 4] = value shown on digit AN[i] (0~9). Any other value (use 4'hF) turns the digit off.
+//   bcd[3:0] = digit AN0, bcd[7:4] = AN1, bcd[11:8] = AN2   (BCD, 0~9)
 //   The divided clock is used as an enable (tick) instead of a second clock.
 //   rst is active low.
 //------------------------------------------------------------------------------
-module Display8(
+module Display3(
     input clk, rst,
-    input [31:0] digits,
+    input [11:0] bcd,
     output reg [6:0] seg,
     output reg [7:0] digit
 );
@@ -27,22 +28,22 @@ end
 
 always @(posedge clk) begin
     if(!rst) digit <= 8'b11111110;
-    else if(tick) digit <= {digit[6:0], digit[7]};
+    else if(tick)
+        case(digit)
+            8'b11111110: digit <= 8'b11111101;
+            8'b11111101: digit <= 8'b11111011;
+            default: digit <= 8'b11111110;
+        endcase
 end
 
 reg [3:0] dec;
 
 always @(*) begin
     case (digit)
-        8'b11111110: dec = digits[3:0];
-        8'b11111101: dec = digits[7:4];
-        8'b11111011: dec = digits[11:8];
-        8'b11110111: dec = digits[15:12];
-        8'b11101111: dec = digits[19:16];
-        8'b11011111: dec = digits[23:20];
-        8'b10111111: dec = digits[27:24];
-        8'b01111111: dec = digits[31:28];
-        default: dec = 4'hF;
+        8'b11111110: dec = bcd[3:0];
+        8'b11111101: dec = bcd[7:4];
+        8'b11111011: dec = bcd[11:8];
+        default: dec = 4'b0000;
     endcase
 end
 
