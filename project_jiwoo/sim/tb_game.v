@@ -1,0 +1,135 @@
+`timescale 1ns / 1ps
+//------------------------------------------------------------------------------
+// tb_game : plays one whole game on top_bbd (fast timing parameters)
+//   Level 1 : BTNU = AND, BTNL = OR, BTNR = XOR, SW0 = NOT, BTNC = submit / next
+//   Level 2 : SW3 = A, SW2 = B (both 4:1 MUX), SW1 = C (2:1 MUX), SW4 raised = submit / next
+//   Scenario:
+//     Q1 (AND)  : empty submit ignored, OR -> WRONG, retry AND -> CORRECT (70 pts)
+//     Q2 (NOR)  : OR + SW0 -> CORRECT (100)
+//     Q3 (XOR)  : XOR -> CORRECT (100)
+//     Q4 (8:1 MUX, D=4,9,2,6,1,7,8,3 target 7)       : ABC=000 -> WRONG, retry ABC=101 -> CORRECT (100)
+//     Q5 (4:1 x2 + 2:1, D=9,1,3,5 E=8,7,2,4 target 7) : ABC=011 -> CORRECT (100)
+//   Expected: END state, 1 life left, score 470
+//------------------------------------------------------------------------------
+module tb_game;
+    reg clk = 0, rstn = 0;
+    reg bc = 0, bu = 0, bl = 0, br = 0;
+    reg [4:0] sw = 5'd0;                 // {SW4, SW3, SW2, SW1, SW0}
+    wire [15:0] led;
+    wire [7:0]  an;
+    wire [3:0]  vr, vg, vb;
+    wire hs, vs;
+
+    top_bbd #(.DIV_1M(2), .DIV_1K(4), .DB_STABLE(3), .NOTE_MS(1)) dut (
+        .CLK100MHZ(clk), .CPU_RESETN(rstn), .SW(sw),
+        .BTNC(bc), .BTNU(bu), .BTNL(bl), .BTNR(br),
+        .LED(led), .LED16_R(), .LED16_G(), .LED16_B(),
+        .CA(), .CB(), .CC(), .CD(), .CE(), .CF(), .CG(), .DP(),
+        .AN(an), .VGA_R(vr), .VGA_G(vg), .VGA_B(vb), .VGA_HS(hs), .VGA_VS(vs),
+        .AUD_PWM(), .AUD_SD()
+    );
+
+    always #5 clk = ~clk;
+
+    integer errors = 0;
+
+    task press_c; begin bc = 1; repeat (150) @(posedge clk); bc = 0; repeat (150) @(posedge clk); end endtask
+    task press_u; begin bu = 1; repeat (150) @(posedge clk); bu = 0; repeat (150) @(posedge clk); end endtask
+    task press_l; begin bl = 1; repeat (150) @(posedge clk); bl = 0; repeat (150) @(posedge clk); end endtask
+    task press_r; begin br = 1; repeat (150) @(posedge clk); br = 0; repeat (150) @(posedge clk); end endtask
+    // SW4 up then down (the submit happens when it goes up)
+    task flip_sw4; begin sw[4] = 1; repeat (150) @(posedge clk); sw[4] = 0; repeat (150) @(posedge clk); end endtask
+    task set_abc; input [2:0] v; begin sw[3] = v[2]; sw[2] = v[1]; sw[1] = v[0]; repeat (50) @(posedge clk); end endtask
+
+    task expect_state;
+        input [3:0] st;
+        input [255:0] what;
+        begin
+            if (dut.state !== st) begin
+                errors = errors + 1;
+                $display("FAIL %0s : state=%0d expected %0d (q=%0d)", what, dut.state, st, dut.qnum);
+            end else
+                $display("ok   %0s : state=%0d q=%0d score=%0d lives=%0d", what, dut.state, dut.qnum, dut.score, dut.lives);
+        end
+    endtask
+
+    localparam S_TITLE = 0, S_ANSWER = 5, S_CORRECT = 7, S_WRONG = 8, S_END = 9;
+
+    initial begin
+        repeat (20) @(posedge clk);
+        rstn = 1;
+        repeat (50) @(posedge clk);
+        expect_state(S_TITLE, "title");
+
+        press_c;                                   // start
+        expect_state(S_ANSWER, "Q1 answer");
+
+        press_c;                                   // no gate chosen -> ignored
+        expect_state(S_ANSWER, "Q1 empty submit ignored");
+        press_l;                                   // OR (wrong, answer is AND)
+        press_c;
+        expect_state(S_WRONG, "Q1 wrong");
+        press_c;                                   // try again
+        expect_state(S_ANSWER, "Q1 retry");
+        press_u;                                   // AND
+        press_c;
+        expect_state(S_CORRECT, "Q1 correct");
+        press_c;
+
+        expect_state(S_ANSWER, "Q2 answer");
+        sw[0] = 1;                                 // NOT
+        press_l;                                   // OR + NOT = NOR
+        press_c;
+        expect_state(S_CORRECT, "Q2 correct");
+        sw[0] = 0;
+        press_c;
+
+        expect_state(S_ANSWER, "Q3 answer");
+        press_r;                                   // XOR
+        press_c;
+        expect_state(S_CORRECT, "Q3 correct");
+        press_c;
+
+        expect_state(S_ANSWER, "Q4 answer");
+        if (dut.level !== 2'd2) begin errors = errors + 1; $display("FAIL Q4 level=%0d", dut.level); end
+        set_abc(3'b000);                           // D0 = 3, not the target
+        flip_sw4;
+        expect_state(S_WRONG, "Q4 wrong");
+        flip_sw4;                                  // retry
+        expect_state(S_ANSWER, "Q4 retry");
+        set_abc(3'b101);                           // A=1 B=0 C=1 -> D5 = 7
+        if (dut.mux_out !== 4'd7) begin errors = errors + 1; $display("FAIL mux_out=%0d expected 7", dut.mux_out); end
+        expect_state(S_ANSWER, "Q4 not submitted yet");
+        flip_sw4;
+        expect_state(S_CORRECT, "Q4 correct");
+        flip_sw4;                                  // next question
+
+        expect_state(S_ANSWER, "Q5 answer");
+        set_abc(3'b011);                           // A=0 B=1 C=1 -> E1 = 7
+        flip_sw4;
+        expect_state(S_CORRECT, "Q5 correct");
+        flip_sw4;                                  // last question -> end
+
+        expect_state(S_END, "end");
+        if (dut.score !== 10'd470) begin errors = errors + 1; $display("FAIL score=%0d expected 470", dut.score); end
+        if (dut.lives !== 2'd1)    begin errors = errors + 1; $display("FAIL lives=%0d expected 1", dut.lives); end
+        press_c;
+        expect_state(S_TITLE, "back to title");
+
+        // game over path: three wrong answers on Q1
+        sw = 5'd0;
+        press_c;
+        repeat (3) begin press_l; press_c; press_c; end
+        expect_state(S_END, "game over");
+        if (dut.lives !== 2'd0) begin errors = errors + 1; $display("FAIL lives=%0d expected 0", dut.lives); end
+
+        $display("tb_game : %0d errors -> %s", errors, errors == 0 ? "PASS" : "FAIL");
+        $finish;
+    end
+
+    initial begin
+        #200_000_000;
+        $display("tb_game : TIMEOUT FAIL");
+        $finish;
+    end
+endmodule
