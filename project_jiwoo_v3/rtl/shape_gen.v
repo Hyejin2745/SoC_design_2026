@@ -20,7 +20,7 @@ module shape_gen (
     output reg  [11:0] rgb
 );
     localparam S_TITLE = 4'd0, S_INIT = 4'd1,
-               S_CORRECT = 4'd7, S_WRONG = 4'd8, S_END = 4'd9;
+               S_CORRECT = 4'd3, S_WRONG = 4'd4, S_END = 4'd5;
 
     localparam [11:0] C_BG     = 12'h112,
                       C_PANEL  = 12'h000,

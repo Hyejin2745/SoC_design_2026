@@ -31,8 +31,8 @@ module text_gen (
     output reg  [7:0]  ch,
     output reg  [2:0]  attr
 );
-    localparam S_TITLE = 4'd0, S_INIT = 4'd1, S_ANSWER = 4'd5,
-               S_CORRECT = 4'd7, S_WRONG = 4'd8, S_END = 4'd9;
+    localparam S_TITLE = 4'd0, S_INIT = 4'd1, S_ANSWER = 4'd2,
+               S_CORRECT = 4'd3, S_WRONG = 4'd4, S_END = 4'd5;
 
     // i-th character of s (string length L, blank when out of range)
     function [7:0] S;

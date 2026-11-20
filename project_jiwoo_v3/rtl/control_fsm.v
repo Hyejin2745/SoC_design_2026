@@ -30,10 +30,10 @@ module control_fsm (
 );
     localparam S_TITLE   = 4'd0,
                S_INIT    = 4'd1,
-               S_ANSWER  = 4'd5,
-               S_CORRECT = 4'd7,
-               S_WRONG   = 4'd8,
-               S_END     = 4'd9;
+               S_ANSWER  = 4'd2,
+               S_CORRECT = 4'd3,
+               S_WRONG   = 4'd4,
+               S_END     = 4'd5;
 
     reg [3:0] next;
     reg       entering;

@@ -173,7 +173,7 @@ module top_board #(
         bcd_best[11:8],  bcd_best[7:4],  bcd_best[3:0],
         bcd_pts[11:8],   bcd_pts[7:4],   bcd_pts[3:0],
         a_g1, h_g1,
-        (state == 4'd7),            // reveal the hidden gate after a correct answer
+        (state == 4'd3),            // reveal the hidden gate after a correct answer
         hid_val,
         d0, d1, d2, d3, e0, e1, e2, e3, tgt, sel, csel, mode8, mux_out,
         VGA_R, VGA_G, VGA_B, VGA_HS, VGA_VS
@@ -182,7 +182,7 @@ module top_board #(
     //--------------------------------------------------------------------------
     // LEDs
     //--------------------------------------------------------------------------
-    assign led_x = {(state == 4'd5) & ans_ok,                 // ready to submit
+    assign led_x = {(state == 4'd2) & ans_ok,                 // ready to submit
                     lives[1] & lives[0], lives[1], |lives};   // lives bar (3 lives = 111)
     assign led_y = 4'b0000;                                   // RGB LED not used
 endmodule

@@ -52,7 +52,7 @@ module tb_game;
         end
     endtask
 
-    localparam S_TITLE = 0, S_ANSWER = 5, S_CORRECT = 7, S_WRONG = 8, S_END = 9;
+    localparam S_TITLE = 0, S_ANSWER = 2, S_CORRECT = 3, S_WRONG = 4, S_END = 5;
 
     initial begin
         repeat (20) @(posedge clk);
