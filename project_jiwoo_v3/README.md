@@ -3,7 +3,7 @@
 카르노 맵(K-map)을 보고 숨겨진 논리 게이트를 맞히는 퀴즈(레벨 1)와, MUX 선택 신호를 조절해 목표 숫자를 출력시키는 퀴즈(레벨 2)를 FPGA(Nexys4 DDR)에서 VGA 화면으로 즐기는 게임입니다.
 
 - 클럭은 100MHz 하나만 사용합니다. 느린 동작(25MHz 픽셀, 7세그 스캔)은 별도 클럭이 아니라 **enable 펄스**로 만듭니다.
-- 수업 실습(Lab 10)의 `Button`, `Display4`, `Register4`, `Register4_top` 코드를 기반으로 만들었습니다 (5절 참고). 리셋은 수업 코드처럼 **active-low**(`if(!rst)`)이고 모든 모듈에 `rst` 핀이 그대로 들어갑니다.
+- 수업 실습 코드(Lab 2 Mux, Lab 4 레지스터, Lab 5 Moore FSM, Lab 10 `Button`/`Display4`/`Register4`/`Register4_top`)를 기반으로 만들었습니다 (5절 참고). 리셋은 수업 코드처럼 **active-low**(`if(!rst)`)이고 모든 모듈에 `rst` 핀이 그대로 들어갑니다.
 - 프레임 버퍼가 없습니다. VGA 좌표 `(x,y)`가 들어올 때마다 그 위치의 **문자와 도형을 조합 논리로 계산**해서 색을 내보냅니다.
 - 문제는 5개로 고정이며 ROM(`puzzle_rom.v`)에 들어 있습니다. 랜덤 생성은 없습니다.
 
@@ -132,7 +132,8 @@ TITLE(0) → INIT(1) → ANSWER(2) ─┬ 일치 → CORRECT(3) ─┬ 마지막
 |---|---|
 | `top_board.v` | 최상위(수업의 `Register4_top`에 해당). 모든 모듈을 연결하고, 레벨 2의 MUX 계산(`mux_up/low/8/out`), 정답 판정(`match`, `ans_ok`), 7세그·LED 배치를 담당 |
 | `Button.v` | 수업 `Button.v` 기반. FF 3단(`btn1→btn2→btn3`)으로 동기화하고 `pls = btn2 & !btn3`로 눌림 순간 1클럭 펄스. 실제 보드의 버튼 떨림 때문에 에지 후 10ms(`LOCK`) 동안 추가 펄스를 막는 잠금 카운터를 더함 |
-| `control_fsm.v` | 게임 흐름 Moore FSM (2절 참고) |
+| `control_fsm.v` | 게임 흐름 Moore FSM (2절 참고). 수업 `MooreStateM.v`와 같은 틀(`preState`/`nextState`, 순차 블록 + 조합 블록 `case`) |
+| `Mux.v`, `Mux4to1.v`, `Mux8to1.v` | 수업 Lab 2의 2:1, 4:1 MUX(조건 연산자)와 연습문제의 8:1 MUX(4:1 두 개 + 2:1 하나). 레벨 2의 MUX 동작을 이 모듈들로 구성 |
 | `score_unit.v` | 문제 번호 `qnum`(0~4), 레벨(`qnum<3`이면 1, 아니면 2), 목숨, 점수, 최고점, 문제별 오답 횟수 `wrongs`(최대 3)와 획득 점수 `pts` |
 | `puzzle_rom.v` | `qnum`으로 고르는 고정 문제표. 레벨 1은 정답 게이트 코드 `g1`, 레벨 2는 MUX 입력 `d0~d3`, `e0~e3`과 목표 `tgt` |
 | `answer_reg.v` | 레벨 1에서 플레이어가 고른 기본 게이트(AND/OR/XOR)를 래치하고, `SW0`(NOT)은 실시간으로 반영해 `a_g1 = {NOT, base}` 출력. 아직 고르지 않았으면 `111` |
@@ -226,6 +227,9 @@ HS, VS, active도 같은 3단을 통과하므로 문자가 밀리지 않습니�
 | `Button.v` | `Button.v` | 3단 FF + `pls = btn2 & !btn3` 구조 그대로. 버튼 떨림 방지용 잠금 카운터(`LOCK`) 추가 |
 | `Display4.v` | `Display8.v` | 클럭 분주 카운터, one-cold `digit`, `dec` 선택, 7세그 패턴 `case` 구조 그대로. 2자리 → 8자리, 파생 클럭 대신 enable(`tick`) 사용 |
 | (Double-Dabble `s1~s4`) | `bin2bcd.v` | 같은 shift-and-add-3 알고리즘. 점수가 최대 500이라 10비트로 확장해 반복문으로 작성 |
+| Lab 2 `Mux`, `Mux4to1`, `Mux8to1` | `Mux.v`, `Mux4to1.v`, `Mux8to1.v` | 수업 코드 그대로 사용. `top_board.v`가 레벨 2에서 인스턴스로 연결 (Q5: 4:1 두 개 + 2:1, Q4: 8:1) |
+| Lab 5 `MooreStateM.v` | `control_fsm.v` | `preState`/`nextState`, 동기 리셋 순차 블록, `case (preState)` 조합 블록(다음 상태 + Moore 출력) 구조 그대로. 상태가 6개이고 `OC` 출력 버퍼는 사용 안 함 |
+| Lab 4 `Counter4.v` | `score_unit.v`(점수 +, 목숨 −), `answer_reg.v` | 동기 리셋 + `case`/`else if` 형태의 레지스터. 점수와 목숨은 수업의 `Register + 1`, `Register - 1`과 같은 방식 |
 | `Register4.v` | `answer_reg.v`, `score_unit.v` | `always @(posedge clk) if(!rst) ... else if(enable) ...` 형태의 레지스터. 모드 `case` 대신 FSM 신호로 제어 |
 | `Register4_top.v` | `top_board.v` | 하위 모듈을 인스턴스로 연결하는 최상위. 핀 이름은 XDC와 맞춤 |
 | `Nexys-4-DDR-Master.xdc` | `constraints/` | 같은 보드 제약 파일 |

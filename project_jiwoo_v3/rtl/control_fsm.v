@@ -1,15 +1,15 @@
 `timescale 1ns / 1ps
 //------------------------------------------------------------------------------
-// control_fsm : overall game flow (Moore machine)
-//   TITLE -> INIT -> ANSWER -> CORRECT -> (INIT | END)
-//                           -> WRONG   -> (ANSWER | END)
-//   END -> TITLE
-//   bc is a 1-clock pulse of the centre button.
-//   In ANSWER the centre button submits, but only when every gate has been set (ans_ok).
-//   'match' = the player's circuit has the same truth table as the hidden circuit.
-//   State numbers are shared with text_gen / shape_gen.
-//   Signals that must change only once (score, lives) are 1 only in the first
-//   clock after entering the state (the 'entering' flag).
+// control_fsm : overall game flow, Moore state machine (same template as Lab5 MooreStateM.v)
+//   TITLE(0) -> INIT(1) -> ANSWER(2) -> CORRECT(3) -> (INIT | END)
+//                                    -> WRONG(4)   -> (ANSWER | END)
+//   END(5) -> TITLE
+//   bc is a 1-clock pulse of the submit / next button (BTNC, or SW4 in level 2).
+//   In ANSWER bc submits, but only when the answer is complete (ans_ok).
+//   'match' = the player's answer is the right one.
+//   State numbers are shared with text_gen / shape_gen / top_board.
+//   score_add, life_dec, upd_best must change only once, so they are 1 only in the
+//   first clock after entering the state (the 'entering' flag).
 //------------------------------------------------------------------------------
 module control_fsm (
     input  wire       clk,
@@ -19,55 +19,72 @@ module control_fsm (
     input  wire       match,
     input  wire       last_q,
     input  wire       lives_zero,
-    output reg  [3:0] state,
-    output wire       game_clr,
-    output wire       clr_round,
-    output wire       ans_edit,
+    output wire [3:0] state,
+    output reg        game_clr,
+    output reg        clr_round,
+    output reg        ans_edit,
     output wire       score_add,
     output wire       life_dec,
     output wire       upd_best,
     output reg        q_adv
 );
-    localparam S_TITLE   = 4'd0,
-               S_INIT    = 4'd1,
-               S_ANSWER  = 4'd2,
-               S_CORRECT = 4'd3,
-               S_WRONG   = 4'd4,
-               S_END     = 4'd5;
+    localparam [3:0] S_TITLE   = 4'd0,
+                     S_INIT    = 4'd1,
+                     S_ANSWER  = 4'd2,
+                     S_CORRECT = 4'd3,
+                     S_WRONG   = 4'd4,
+                     S_END     = 4'd5;
 
-    reg [3:0] next;
+    reg [3:0] preState, nextState;
     reg       entering;
 
-    always @* begin
-        next = state;
-        case (state)
-            S_TITLE:   if (bc) next = S_INIT;
-            S_INIT:    next = S_ANSWER;
-            S_ANSWER:  if (bc && ans_ok) next = match ? S_CORRECT : S_WRONG;
-            S_CORRECT: if (bc) next = last_q ? S_END : S_INIT;
-            S_WRONG:   if (bc) next = lives_zero ? S_END : S_ANSWER;
-            S_END:     if (bc) next = S_TITLE;
-            default:   next = S_TITLE;
-        endcase
-    end
-
-    always @(posedge clk) begin
-        if (!rst) begin
-            state    <= S_TITLE;
+    always @ (posedge clk) begin //sequential
+        if (!rst) begin //Synchronous Reset
+            preState <= S_TITLE;
             entering <= 1'b0;
             q_adv    <= 1'b0;
-        end else begin
-            state    <= next;
-            entering <= (next != state);
-            q_adv    <= (state == S_CORRECT) && bc && !last_q;
+        end
+        else begin
+            preState <= nextState;
+            entering <= (nextState != preState);
+            q_adv    <= (preState == S_CORRECT) && bc && !last_q;
         end
     end
 
-    assign game_clr  = (state == S_TITLE);
-    assign clr_round = (state == S_INIT);
-    assign ans_edit  = (state == S_ANSWER);
+    always @(*) begin //combinational: next state and Moore outputs
+        nextState = preState;
+        game_clr  = 1'b0;
+        clr_round = 1'b0;
+        ans_edit  = 1'b0;
+        case (preState)
+            S_TITLE: begin
+                game_clr = 1'b1;
+                if (bc) nextState = S_INIT;
+            end
+            S_INIT: begin
+                clr_round = 1'b1;
+                nextState = S_ANSWER;
+            end
+            S_ANSWER: begin
+                ans_edit = 1'b1;
+                if (bc && ans_ok) nextState = match ? S_CORRECT : S_WRONG;
+            end
+            S_CORRECT: begin
+                if (bc) nextState = last_q ? S_END : S_INIT;
+            end
+            S_WRONG: begin
+                if (bc) nextState = lives_zero ? S_END : S_ANSWER;
+            end
+            S_END: begin
+                if (bc) nextState = S_TITLE;
+            end
+            default: nextState = S_TITLE;
+        endcase
+    end
 
-    assign score_add = (state == S_CORRECT) && entering;
-    assign life_dec  = (state == S_WRONG)   && entering;
-    assign upd_best  = (state == S_END)     && entering;
+    assign state = preState;
+
+    assign score_add = (preState == S_CORRECT) && entering;
+    assign life_dec  = (preState == S_WRONG)   && entering;
+    assign upd_best  = (preState == S_END)     && entering;
 endmodule

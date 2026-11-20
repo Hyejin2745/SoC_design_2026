@@ -105,19 +105,15 @@ module top_board #(
     //--------------------------------------------------------------------------
     // level 2 : two 4:1 MUX (same select A,B) -> 2:1 MUX (select C)
     //--------------------------------------------------------------------------
-    wire [3:0] mux_up  = (sel == 2'd0) ? d0 :
-                         (sel == 2'd1) ? d1 :
-                         (sel == 2'd2) ? d2 : d3;
-    wire [3:0] mux_low = (sel == 2'd0) ? e0 :
-                         (sel == 2'd1) ? e1 :
-                         (sel == 2'd2) ? e2 : e3;
-    wire [2:0] idx8    = {sel, csel};
-    wire [3:0] mux_8   = (idx8 == 3'd0) ? d0 : (idx8 == 3'd1) ? d1 :
-                         (idx8 == 3'd2) ? d2 : (idx8 == 3'd3) ? d3 :
-                         (idx8 == 3'd4) ? e0 : (idx8 == 3'd5) ? e1 :
-                         (idx8 == 3'd6) ? e2 : e3;
+    wire [3:0] mux_up, mux_low, mux_2, mux_8;
+    Mux4to1 MU (d0, d1, d2, d3, sel[1], sel[0], mux_up);     // upper 4:1 MUX (select A,B)
+    Mux4to1 ML (e0, e1, e2, e3, sel[1], sel[0], mux_low);    // lower 4:1 MUX (select A,B)
+    Mux     M2 (mux_up, mux_low, csel, mux_2);               // 2:1 MUX (select C)
+    Mux8to1 M8 (d0, d1, d2, d3, e0, e1, e2, e3,
+                sel[1], sel[0], csel, mux_8);                // Q4: one 8:1 MUX, input = {A,B,C}
     wire       mode8   = (qnum == 3'd3);             // Q4 : single 8:1 MUX
-    wire [3:0] mux_out = mode8 ? mux_8 : (csel ? mux_low : mux_up);
+    wire [3:0] mux_out;
+    Mux        MS (mux_2, mux_8, mode8, mux_out);
 
     // submit is allowed when a gate has been chosen (level 1) or always (level 2)
     assign ans_ok = (level == 2'd1) ? gate_set : 1'b1;
