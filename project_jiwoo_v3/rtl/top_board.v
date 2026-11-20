@@ -13,7 +13,7 @@
 //       BTNC = submit / next screen
 //
 //   rst     : CPU_RESETN pin (active low: pressed = 0)
-//   led_x   : [2:0] lives, [3] ready to submit
+//   led_x   : [2:0] lives, [3] unused (always off)
 //   led_y   : unused (always off)
 //   seg     : {CA..CG}      digit : AN[7:0]
 //   7-seg   : [2:0] score
@@ -152,7 +152,7 @@ module top_board #(
     //--------------------------------------------------------------------------
     // LEDs
     //--------------------------------------------------------------------------
-    assign led_x = {ans_edit & ans_ok,                 // ready to submit
+    assign led_x = {1'b0,                                     // unused
                     lives[1] & lives[0], lives[1], |lives};   // lives bar (3 lives = 111)
     assign led_y = 4'b0000;                                   // RGB LED not used
 endmodule
