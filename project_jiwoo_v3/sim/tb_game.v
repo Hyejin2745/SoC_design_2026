@@ -7,9 +7,9 @@
 //     Q1 (AND)  : empty submit ignored, OR -> WRONG, retry AND -> CORRECT (70 pts)
 //     Q2 (NOR)  : OR + SW0 -> CORRECT (100)
 //     Q3 (XOR)  : XOR -> CORRECT (100)
-//     Q4 (8:1 MUX, D=3,8,5,1,7,2,9,4 target 9)       : ABC=000 -> WRONG, retry ABC=110 -> CORRECT (100)
+//     Q4 (8:1 MUX, D=3,8,5,1,7,2,9,4 target 9)       : ABC=000 -> WRONG, retry ABC=110 -> CORRECT (70)
 //     Q5 (4:1 x2 + 2:1, D=6,2,8,5 E=1,4,7,3 target 4) : ABC=011 -> CORRECT (100)
-//   Expected: END state, 1 life left, score 470
+//   Expected: END state, 1 life left, score 440
 //------------------------------------------------------------------------------
 module tb_game;
     reg clk = 0, rstn = 0;
@@ -108,7 +108,7 @@ module tb_game;
         press_c;                                  // last question -> end
 
         expect_state(S_END, "end");
-        if (dut.score !== 10'd470) begin errors = errors + 1; $display("FAIL score=%0d expected 470", dut.score); end
+        if (dut.score !== 10'd440) begin errors = errors + 1; $display("FAIL score=%0d expected 440", dut.score); end
         if (dut.lives !== 2'd1)    begin errors = errors + 1; $display("FAIL lives=%0d expected 1", dut.lives); end
         press_c;
         expect_state(S_TITLE, "back to title");

@@ -3,8 +3,7 @@
 // score_unit : score, lives, question number / level, best score
 //   One game = 5 fixed questions (qnum 0~4): Q1-Q3 are level 1 (gate), Q4-Q5 are level 2 (MUX). 3 lives.
 //   Points for a correct answer:
-//     level 1 : 100 with no wrong try on this question, 70 after one wrong try, 40 after two or more
-//     level 2 : always 100
+//     100 with no wrong try on this question, 70 after one wrong try, 40 after two or more
 //------------------------------------------------------------------------------
 module score_unit (
     input  wire       clk,
@@ -26,8 +25,7 @@ module score_unit (
     reg [1:0] wrongs;              // wrong tries on the current question (saturates at 3)
 
     assign level      = (qnum < 3'd3) ? 2'd1 : 2'd2;
-    assign pts        = (level == 2'd2)  ? 8'd100 :
-                        (wrongs == 2'd0) ? 8'd100 :
+    assign pts        = (wrongs == 2'd0) ? 8'd100 :
                         (wrongs == 2'd1) ? 8'd70  : 8'd40;
     assign lives_zero = (lives == 2'd0);
     assign last_q     = (qnum == 3'd4);
