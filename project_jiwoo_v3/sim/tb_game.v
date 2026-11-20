@@ -7,8 +7,8 @@
 //     Q1 (AND)  : empty submit ignored, OR -> WRONG, retry AND -> CORRECT (70 pts)
 //     Q2 (NOR)  : OR + SW0 -> CORRECT (100)
 //     Q3 (XOR)  : XOR -> CORRECT (100)
-//     Q4 (8:1 MUX, D=4,9,2,6,1,7,8,3 target 7)       : ABC=000 -> WRONG, retry ABC=101 -> CORRECT (100)
-//     Q5 (4:1 x2 + 2:1, D=9,1,3,5 E=8,7,2,4 target 7) : ABC=011 -> CORRECT (100)
+//     Q4 (8:1 MUX, D=3,8,5,1,7,2,9,4 target 9)       : ABC=000 -> WRONG, retry ABC=110 -> CORRECT (100)
+//     Q5 (4:1 x2 + 2:1, D=6,2,8,5 E=1,4,7,3 target 4) : ABC=011 -> CORRECT (100)
 //   Expected: END state, 1 life left, score 470
 //------------------------------------------------------------------------------
 module tb_game;
@@ -91,20 +91,20 @@ module tb_game;
 
         expect_state(S_ANSWER, "Q4 answer");
         if (dut.level !== 2'd2) begin errors = errors + 1; $display("FAIL Q4 level=%0d", dut.level); end
-        set_abc(3'b000);                           // D0 = 3, not the target
+        set_abc(3'b000);                           // D0 = 3, not the target 9
         flip_sw4;
         expect_state(S_WRONG, "Q4 wrong");
         flip_sw4;                                  // retry
         expect_state(S_ANSWER, "Q4 retry");
-        set_abc(3'b101);                           // A=1 B=0 C=1 -> D5 = 7
-        if (dut.mux_out !== 4'd7) begin errors = errors + 1; $display("FAIL mux_out=%0d expected 7", dut.mux_out); end
+        set_abc(3'b110);                           // A=1 B=1 C=0 -> D6 = 9
+        if (dut.mux_out !== 4'd9) begin errors = errors + 1; $display("FAIL mux_out=%0d expected 9", dut.mux_out); end
         expect_state(S_ANSWER, "Q4 not submitted yet");
         flip_sw4;
         expect_state(S_CORRECT, "Q4 correct");
         flip_sw4;                                  // next question
 
         expect_state(S_ANSWER, "Q5 answer");
-        set_abc(3'b011);                           // A=0 B=1 C=1 -> E1 = 7
+        set_abc(3'b011);                           // A=0 B=1 C=1 -> E1 = 4
         flip_sw4;
         expect_state(S_CORRECT, "Q5 correct");
         flip_sw4;                                  // last question -> end
