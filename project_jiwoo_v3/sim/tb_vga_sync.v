@@ -2,7 +2,7 @@
 // vga_sync : measures the HS and VS period and width
 //   horizontal 800 pixels (sync width 96), vertical 525 lines (sync width 2 lines), visible area 640x480 = 307200 pixels
 module tb_vga_sync;
-    reg clk = 0, rst = 1;
+    reg clk = 0, rst = 0;       // rst is active low
     always #5 clk = ~clk;
 
     wire        en25;
@@ -31,11 +31,11 @@ module tb_vga_sync;
 
     initial begin
         repeat (3) @(posedge clk);
-        #1 rst = 0;
+        #1 rst = 1;
     end
 
     always @(posedge clk) begin
-        if (!rst && en25) begin
+        if (rst && en25) begin
             pix = pix + 1;
             if (x == 10'd0) line = line + 1;
 

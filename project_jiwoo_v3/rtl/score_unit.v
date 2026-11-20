@@ -33,7 +33,7 @@ module score_unit (
     assign last_q     = (qnum == 3'd4);
 
     always @(posedge clk) begin
-        if (rst) begin
+        if (!rst) begin
             qnum   <= 3'd0;
             lives  <= 2'd3;
             score  <= 10'd0;

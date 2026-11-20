@@ -19,8 +19,7 @@
 //   7-seg   : [7]level [6]question no. [3]lives [2:0]score
 //------------------------------------------------------------------------------
 module top_board #(
-    parameter DIV_1K    = 100000, // 100MHz / 100000 = 1kHz tick
-    parameter DB_STABLE = 10      // debounce: 10 consecutive 1kHz samples = 10ms
+    parameter DB_LOCK = 1_000_000   // button bounce lock: 1,000,000 clocks = 10ms (small in simulation)
 ) (
     input  wire       clk,
     input  wire       rst,
@@ -41,36 +40,21 @@ module top_board #(
     output wire       VGA_VS
 );
     //--------------------------------------------------------------------------
-    // reset, switch and button synchronization
-    //--------------------------------------------------------------------------
-    wire rstn_s;
-    sync_ff #(1) u_rst_sync (clk, rst, rstn_s);
-    wire rst_i = ~rstn_s;
-
-    wire [4:0] sw;
-    sync_ff #(5) u_sw_sync (clk, {sw4, x}, sw);
-    wire       sw_not = sw[0];
-    wire [1:0] sel    = {sw[3], sw[2]};   // A, B (select of both 4:1 MUX)
-    wire       csel   = sw[1];            // C (select of the 2:1 MUX)
-
-    wire [3:0] btn_s;
-    sync_ff #(4) u_btn_sync (clk, {BTNC, BTNU, BTNL, BTNR}, btn_s);
-
-    //--------------------------------------------------------------------------
-    // 1kHz tick (debounce sampling, 7-seg scan), then debounce + one-pulse for 4 buttons and SW4
+    // switches (read directly) and buttons (Button = synchronizer + single pulser)
+    //   rst is active low and goes straight to every module.
     //   (the 25MHz pixel enable en25 comes from vga_sync)
     //--------------------------------------------------------------------------
-    reg [16:0] c1k;
-    wire       en1k = (c1k == DIV_1K - 1);
-    always @(posedge clk) c1k <= (rst_i || en1k) ? 17'd0 : c1k + 17'd1;
+    wire       sw_not = x[0];
+    wire [1:0] sel    = {x[3], x[2]};   // A, B (select of both 4:1 MUX)
+    wire       csel   = x[1];           // C (select of the 2:1 MUX)
 
     wire bc, bu, bl, br, s4;
 
-    btn_pulse #(DB_STABLE) u_bp_c (clk, rst_i, en1k, btn_s[3], bc);
-    btn_pulse #(DB_STABLE) u_bp_u (clk, rst_i, en1k, btn_s[2], bu);
-    btn_pulse #(DB_STABLE) u_bp_l (clk, rst_i, en1k, btn_s[1], bl);
-    btn_pulse #(DB_STABLE) u_bp_r (clk, rst_i, en1k, btn_s[0], br);
-    btn_pulse #(DB_STABLE) u_bp_s (clk, rst_i, en1k, sw[4],    s4);
+    Button #(DB_LOCK) BT_C (clk, rst, BTNC, bc);
+    Button #(DB_LOCK) BT_U (clk, rst, BTNU, bu);
+    Button #(DB_LOCK) BT_L (clk, rst, BTNL, bl);
+    Button #(DB_LOCK) BT_R (clk, rst, BTNR, br);
+    Button #(DB_LOCK) BT_S (clk, rst, sw4,  s4);
 
     //--------------------------------------------------------------------------
     // control FSM
@@ -84,7 +68,7 @@ module top_board #(
     wire       go = bc | ((level == 2'd2) & s4);
 
     control_fsm u_fsm (
-        clk, rst_i, go, ans_ok, match, last_q, lives_zero,
+        clk, rst, go, ans_ok, match, last_q, lives_zero,
         state, game_clr, clr_round, ans_edit,
         score_add, life_dec, upd_best, q_adv
     );
@@ -97,7 +81,7 @@ module top_board #(
     wire [7:0] pts;
 
     score_unit u_score (
-        clk, rst_i, game_clr, score_add, life_dec, q_adv, upd_best,
+        clk, rst, game_clr, score_add, life_dec, q_adv, upd_best,
         qnum, level, lives, score, best, pts, lives_zero, last_q
     );
 
@@ -113,7 +97,7 @@ module top_board #(
     //--------------------------------------------------------------------------
     wire [2:0] a_g1;
     wire       gate_set;
-    answer_reg u_ans (clk, rst_i, clr_round, ans_edit, bu, bl, br, sw_not, a_g1, gate_set);
+    answer_reg u_ans (clk, rst, clr_round, ans_edit, bu, bl, br, sw_not, a_g1, gate_set);
 
     wire [3:0] hid_val;
     kmap_val u_hid   (h_g1, hid_val);
@@ -148,26 +132,24 @@ module top_board #(
     bin2bcd u_bcd_pts   ({2'b00, pts},   bcd_pts);
 
     //--------------------------------------------------------------------------
-    // 7-segment : [7] level [6] question no. [3] lives [2:0] score (AN5, AN4 blank)
+    // 7-segment : [7] level [6] question no. [3] lives [2:0] score (AN5, AN4 off)
     //--------------------------------------------------------------------------
     wire [31:0] seg_digits = { {2'b00, level},              // AN7
                                {1'b0, qnum} + 4'd1,         // AN6
-                               8'd0,                        // AN5, AN4 (blank)
+                               8'hFF,                       // AN5, AN4 (off)
                                {2'b00, lives},              // AN3
                                bcd_score };                 // AN2..AN0
-    wire [6:0] seg_n;
-    seg7_driver u_seg (clk, rst_i, en1k, seg_digits, 8'b0011_0000, digit, seg_n);
-    assign seg = {seg_n[0], seg_n[1], seg_n[2], seg_n[3], seg_n[4], seg_n[5], seg_n[6]};
+    Display8 DP0 (clk, rst, seg_digits, seg, digit);
 
     //--------------------------------------------------------------------------
     // VGA
     //--------------------------------------------------------------------------
     wire [9:0] vx, vy;
     wire       v_hs, v_vs, v_active;
-    vga_sync u_vga (clk, rst_i, en25, vx, vy, v_hs, v_vs, v_active);
+    vga_sync u_vga (clk, rst, en25, vx, vy, v_hs, v_vs, v_active);
 
     renderer u_render (
-        clk, rst_i, en25, vx, vy, v_hs, v_vs, v_active,
+        clk, rst, en25, vx, vy, v_hs, v_vs, v_active,
         state, level, qnum, lives, lives_zero,
         bcd_score[11:8], bcd_score[7:4], bcd_score[3:0],
         bcd_best[11:8],  bcd_best[7:4],  bcd_best[3:0],

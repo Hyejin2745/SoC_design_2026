@@ -22,7 +22,7 @@ module answer_reg (
     reg       set;
 
     always @(posedge clk) begin
-        if (rst || clr) begin
+        if (!rst || clr) begin
             base <= 2'd0;
             set  <= 1'b0;
         end else if (edit_en && (bu || bl || br)) begin

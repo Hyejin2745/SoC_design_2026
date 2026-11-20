@@ -21,7 +21,7 @@ module tb_game;
     wire [3:0]  vr, vg, vb;
     wire hs, vs;
 
-    top_board #(.DIV_1K(8), .DB_STABLE(3)) dut (
+    top_board #(.DB_LOCK(3)) dut (
         .clk(clk), .rst(rstn), .x(sw[3:0]), .sw4(sw[4]),
         .BTNC(bc), .BTNU(bu), .BTNL(bl), .BTNR(br),
         .led_x(led_x), .led_y(led_y), .seg(seg), .digit(digit),

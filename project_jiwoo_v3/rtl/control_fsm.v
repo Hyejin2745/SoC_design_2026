@@ -52,7 +52,7 @@ module control_fsm (
     end
 
     always @(posedge clk) begin
-        if (rst) begin
+        if (!rst) begin
             state    <= S_TITLE;
             entering <= 1'b0;
             q_adv    <= 1'b0;

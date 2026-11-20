@@ -2,7 +2,8 @@
 
 카르노 맵(K-map)을 보고 숨겨진 논리 게이트를 맞히는 퀴즈(레벨 1)와, MUX 선택 신호를 조절해 목표 숫자를 출력시키는 퀴즈(레벨 2)를 FPGA(Nexys4 DDR)에서 VGA 화면으로 즐기는 게임입니다.
 
-- 클럭은 100MHz 하나만 사용합니다. 느린 동작(25MHz 픽셀, 1kHz 틱)은 별도 클럭이 아니라 **enable 펄스**로 만듭니다.
+- 클럭은 100MHz 하나만 사용합니다. 느린 동작(25MHz 픽셀, 7세그 스캔)은 별도 클럭이 아니라 **enable 펄스**로 만듭니다.
+- 수업 실습(Lab 10)의 `Button`, `Display4`, `Register4`, `Register4_top` 코드를 기반으로 만들었습니다 (5절 참고). 리셋은 수업 코드처럼 **active-low**(`if(!rst)`)이고 모든 모듈에 `rst` 핀이 그대로 들어갑니다.
 - 프레임 버퍼가 없습니다. VGA 좌표 `(x,y)`가 들어올 때마다 그 위치의 **문자와 도형을 조합 논리로 계산**해서 색을 내보냅니다.
 - 문제는 5개로 고정이며 ROM(`puzzle_rom.v`)에 들어 있습니다. 랜덤 생성은 없습니다.
 
@@ -108,9 +109,8 @@ TITLE(0) → INIT(1) → ANSWER(2) ─┬ 일치 → CORRECT(3) ─┬ 마지막
 ## 3. 데이터 흐름과 모듈 연결
 
 ```
-버튼/SW/리셋 ─ sync_ff ─ btn_pulse ─ bc,bu,bl,br,s4 ─┐
-                            ▲ en1k (top 안의 1kHz 카운터)│
-                                                     ▼
+버튼 ─ Button ─ bc,bu,bl,br,s4 ─┐        SW0~SW3은 top에서 직접 사용
+                                ▼
                  ┌──────── control_fsm ⇄ score_unit (qnum, level, lives, score, best, pts)
                  │ state, game_clr, clr_round, ans_edit, score_add, life_dec, upd_best, q_adv
                  │
@@ -119,7 +119,7 @@ TITLE(0) → INIT(1) → ANSWER(2) ─┬ 일치 → CORRECT(3) ─┬ 마지막
                     │    answer_reg ─→ a_g1 ────────────────┘   match
                     └ d0..d3, e0..e3, tgt ─ MUX 선택 로직 ─→ mux_out ─ (mux_out == tgt) ─ match
 
- score/best/pts ─ bin2bcd ─ seg7_driver ─→ 7세그
+ score/best/pts ─ bin2bcd ─ Display8 ─→ 7세그
  vga_sync ─ renderer ─┬ text_gen ─ font_rom
                       └ shape_gen ─ gate_sprite          ─→ VGA
 ```
@@ -130,9 +130,8 @@ TITLE(0) → INIT(1) → ANSWER(2) ─┬ 일치 → CORRECT(3) ─┬ 마지막
 
 | 파일 | 역할 |
 |---|---|
-| `top_board.v` | 최상위. 모든 모듈을 연결하고, 1kHz 카운터, 레벨 2의 MUX 계산(`mux_up/low/8/out`), 정답 판정(`match`, `ans_ok`), 7세그·LED 배치를 담당 |
-| `sync_ff.v` | 외부 입력(리셋, 스위치, 버튼)을 FF 2단으로 클럭에 동기화 (메타스테이블 방지) |
-| `btn_pulse.v` | 디바운스 + 원펄스. 1kHz 틱마다 입력을 보고, 안정 상태와 다른 값이 `STABLE`(10)번 연속 유지되면 상태를 바꿈. 눌림(0→1)이 확정되는 순간 1클럭 펄스 출력 |
+| `top_board.v` | 최상위(수업의 `Register4_top`에 해당). 모든 모듈을 연결하고, 레벨 2의 MUX 계산(`mux_up/low/8/out`), 정답 판정(`match`, `ans_ok`), 7세그·LED 배치를 담당 |
+| `Button.v` | 수업 `Button.v` 기반. FF 3단(`btn1→btn2→btn3`)으로 동기화하고 `pls = btn2 & !btn3`로 눌림 순간 1클럭 펄스. 실제 보드의 버튼 떨림 때문에 에지 후 10ms(`LOCK`) 동안 추가 펄스를 막는 잠금 카운터를 더함 |
 | `control_fsm.v` | 게임 흐름 Moore FSM (2절 참고) |
 | `score_unit.v` | 문제 번호 `qnum`(0~4), 레벨(`qnum<3`이면 1, 아니면 2), 목숨, 점수, 최고점, 문제별 오답 횟수 `wrongs`(최대 3)와 획득 점수 `pts` |
 | `puzzle_rom.v` | `qnum`으로 고르는 고정 문제표. 레벨 1은 정답 게이트 코드 `g1`, 레벨 2는 MUX 입력 `d0~d3`, `e0~e3`과 목표 `tgt` |
@@ -145,7 +144,7 @@ TITLE(0) → INIT(1) → ANSWER(2) ─┬ 일치 → CORRECT(3) ─┬ 마지막
 | 🟦 `shape_gen.v` | 도형 레이어: 게이트 기호·입력선·NOT 버블·K-map 칸(레벨 1), MUX 사다리꼴·배선·선택 경로 강조(레벨 2), 정답/오답 테두리, 제목·종료 화면 장식 상자 |
 | 🟦 `gate_sprite.v` | AND/OR/XOR 외곽선 비트맵(32x40) — `gen_sprite.py`로 생성 |
 | 🟦 `font_rom.v` | 8x16 폰트 — `gen_font.py`로 생성 (`text_gen.v`에 나오는 글자만 포함) |
-| `seg7_driver.v` | 8자리 7세그 다중화 구동 (1kHz로 자리를 순환, 0~9 표시, 자리별 blank) |
+| `Display8.v` | 수업 `Display4.v`를 8자리로 확장. 14비트 카운터(10000클럭)로 자릿수 선택(`digit`, one-cold)을 순환시키고, 선택된 자리의 값(`dec`)을 active-low 패턴(`seg`)으로 변환. 값이 `4'hF`인 자리는 꺼짐 |
 | `bin2bcd.v` | Double-Dabble 방식 10비트 이진수 → 3자리 BCD (점수, 최고점, 문제 점수 표시용) |
 
 ### 게이트 코드 (`gate_unit`)
@@ -220,14 +219,22 @@ HS, VS, active도 같은 3단을 통과하므로 문자가 밀리지 않습니�
 
 ---
 
-## 5. 입력 처리와 타이밍
+## 5. 수업 코드(Lab 10)와의 대응
 
-- 스위치/버튼/리셋은 `sync_ff`로 2단 동기화한 뒤 사용합니다.
-- 버튼 4개와 `SW4`는 `btn_pulse`(10ms 디바운스 + 원펄스)를 거칩니다. `SW0~SW3`은 상태가 바로 반영되어야 해서 디바운스 없이 동기화만 합니다.
-- 1kHz 틱(`en1k`)은 `top_board.v` 안의 17비트 카운터(`DIV_1K = 100000`)가 만들고, 디바운스 샘플링과 7세그 자리 전환에 씁니다 (한 자리당 약 125Hz로 갱신).
-- 25MHz 픽셀 enable은 `vga_sync.v` 안의 2비트 카운터가 만들고 `renderer`도 같은 신호를 씁니다.
+| 수업 코드 | 이 프로젝트 | 같은 점 / 바뀐 점 |
+|---|---|---|
+| `Button.v` | `Button.v` | 3단 FF + `pls = btn2 & !btn3` 구조 그대로. 버튼 떨림 방지용 잠금 카운터(`LOCK`) 추가 |
+| `Display4.v` | `Display8.v` | 클럭 분주 카운터, one-cold `digit`, `dec` 선택, 7세그 패턴 `case` 구조 그대로. 2자리 → 8자리, 파생 클럭 대신 enable(`tick`) 사용 |
+| (Double-Dabble `s1~s4`) | `bin2bcd.v` | 같은 shift-and-add-3 알고리즘. 점수가 최대 500이라 10비트로 확장해 반복문으로 작성 |
+| `Register4.v` | `answer_reg.v`, `score_unit.v` | `always @(posedge clk) if(!rst) ... else if(enable) ...` 형태의 레지스터. 모드 `case` 대신 FSM 신호로 제어 |
+| `Register4_top.v` | `top_board.v` | 하위 모듈을 인스턴스로 연결하는 최상위. 핀 이름은 XDC와 맞춤 |
+| `Nexys-4-DDR-Master.xdc` | `constraints/` | 같은 보드 제약 파일 |
 
-`top_board`의 파라미터: `DIV_1K`(1kHz 틱 분주비, 시뮬레이션에서는 작게), `DB_STABLE`(디바운스 연속 샘플 수).
+- **리셋**: 수업 코드처럼 active-low(`CPU_RESETN`을 그대로 모든 모듈의 `rst`로 연결, `if(!rst)`).
+- **스위치**: `SW0~SW3`은 수업의 `mode`, `din`처럼 top에서 직접 사용합니다. `SW4`(제출)와 버튼 4개만 `Button`을 거칩니다.
+- **버튼 잠금(`LOCK`)**: `DB_LOCK`(기본 1,000,000클럭 = 10ms) 파라미터로 바꿀 수 있고, 시뮬레이션에서는 작은 값을 씁니다.
+- **7세그**: 10000클럭마다 다음 자리로 넘어갑니다 (한 자리당 약 1.25kHz 갱신).
+- **25MHz 픽셀 enable**: `vga_sync.v` 안의 2비트 카운터가 만들고 `renderer`도 같은 신호를 씁니다.
 
 ---
 

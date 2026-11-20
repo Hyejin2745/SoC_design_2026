@@ -21,8 +21,8 @@ module vga_sync (
     assign pix_en = (div == 2'd3);
 
     always @(posedge clk) begin
-        div <= rst ? 2'd0 : div + 2'd1;
-        if (rst) begin
+        div <= !rst ? 2'd0 : div + 2'd1;
+        if (!rst) begin
             x <= 10'd0;
             y <= 10'd0;
         end else if (pix_en) begin

@@ -72,7 +72,7 @@ module renderer (
     reg        hs1, vs1, ac1;
 
     always @(posedge clk) begin
-        if (rst) begin
+        if (!rst) begin
             ch1 <= 8'h20; at1 <= 3'd0; sh1 <= 12'd0; xb1 <= 3'd0; yb1 <= 4'd0;
             hs1 <= 1'b1;  vs1 <= 1'b1; ac1 <= 1'b0;
         end else if (pix_en) begin
@@ -98,7 +98,7 @@ module renderer (
     reg        hs2, vs2, ac2;
 
     always @(posedge clk) begin
-        if (rst) begin
+        if (!rst) begin
             fb2 <= 8'd0; at2 <= 3'd0; sh2 <= 12'd0; xb2 <= 3'd0;
             hs2 <= 1'b1; vs2 <= 1'b1; ac2 <= 1'b0;
         end else if (pix_en) begin
@@ -130,7 +130,7 @@ module renderer (
     wire [11:0] pix = txt_on ? txt_rgb : sh2;
 
     always @(posedge clk) begin
-        if (rst) begin
+        if (!rst) begin
             vga_r <= 4'd0; vga_g <= 4'd0; vga_b <= 4'd0;
             vga_hs <= 1'b1; vga_vs <= 1'b1;
         end else if (pix_en) begin
