@@ -33,11 +33,11 @@ project_jiwoo.xpr   Vivado 프로젝트
 
 ```
 top_board
- ├ 입력   sync_ff ─ btn_pulse                  (버튼 4개 + SW4)
+ ├ 입력   sync_ff (리셋·스위치·버튼) ─ btn_pulse   (버튼 4개 + SW4)
  ├ 타이밍 1kHz 카운터(top 내부)                (디바운스·7세그 스캔), en25는 vga_sync가 생성
  ├ 게임   control_fsm ⇄ score_unit
- │        puzzle_rom ─┬ answer_reg, kmap_val ─ (게이트 코드 일치 비교)   레벨 1
- │                    └ MUX 선택 로직 (top_board 안)                   레벨 2
+ │        puzzle_rom ─┬ 레벨 1: 정답 게이트 코드 ≟ answer_reg(플레이어 게이트), kmap_val(K-map 표시)
+ │                    └ 레벨 2: MUX 선택 로직 (top_board 안)
  ├ 화면   vga_sync ─ renderer ─┬ text_gen ─ font_rom
  │                             └ shape_gen ─ gate_sprite
  └ 출력   seg7_driver ← bin2bcd
