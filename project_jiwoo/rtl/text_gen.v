@@ -110,6 +110,7 @@ module text_gen (
     reg [3:0] kidx;
     reg       game_view;
     reg       lv1;
+    reg       rev2;          // level 2: show the chosen input / output only on the result screens
     reg [1:0] k;
 
     always @* begin
@@ -122,6 +123,7 @@ module text_gen (
         k = 2'd0;
 
         lv1 = (level == 2'd1);
+        rev2 = (state == S_CORRECT) || (state == S_WRONG);
         game_view = (state >= S_INIT) && (state <= S_WRONG);
 
         //======================================================================
@@ -354,7 +356,8 @@ module text_gen (
                         11:      ch = (r < 14) ? dg(dval(k)) : dg(eval_(k));
                         default: ch = 8'h20;
                     endcase
-                    attr = mode8 ? ((ri == {sel, csel}) ? 3'd2 : 3'd0)
+                    attr = !rev2 ? 3'd0 :
+                           mode8 ? ((ri == {sel, csel}) ? 3'd2 : 3'd0)
                                  : ((k == sel)          ? 3'd2 : 3'd0);
                 end
 
@@ -374,7 +377,7 @@ module text_gen (
                 // output
                 if (r == 13 && c >= 62 && c < 69) begin
                     ch = S("OUT = ", 6, c - 62);
-                    if (c == 68) begin ch = dg(mux_out); attr = 3'd1; end
+                    if (c == 68) begin ch = rev2 ? dg(mux_out) : "?"; attr = rev2 ? 3'd1 : 3'd0; end
                 end
 
                 // select values under the MUX
@@ -382,24 +385,24 @@ module text_gen (
                     if (mode8) begin
                         if (c >= 30 && c < 33) begin
                             ch = (c == 30) ? "A" : (c == 31) ? "=" : bit_ch(sel[1]);
-                            attr = 3'd1;
+                            attr = 3'd0;
                         end else if (c >= 33 && c < 36) begin
                             ch = (c == 33) ? "B" : (c == 34) ? "=" : bit_ch(sel[0]);
-                            attr = 3'd1;
+                            attr = 3'd0;
                         end else if (c >= 36 && c < 39) begin
                             ch = (c == 36) ? "C" : (c == 37) ? "=" : bit_ch(csel);
-                            attr = 3'd1;
+                            attr = 3'd0;
                         end
                     end else begin
                         if (c >= 31 && c < 35) begin
                             ch = (c == 31) ? "A" : (c == 32) ? "=" : (c == 33) ? bit_ch(sel[1]) : 8'h20;
-                            attr = 3'd1;
+                            attr = 3'd0;
                         end else if (c >= 35 && c < 38) begin
                             ch = (c == 35) ? "B" : (c == 36) ? "=" : bit_ch(sel[0]);
-                            attr = 3'd1;
+                            attr = 3'd0;
                         end else if (c >= 51 && c < 54) begin
                             ch = (c == 51) ? "C" : (c == 52) ? "=" : bit_ch(csel);
-                            attr = 3'd1;
+                            attr = 3'd0;
                         end
                     end
                 end
@@ -413,11 +416,11 @@ module text_gen (
                         end
                         if (r == 25) begin
                             if (c >= 2 && c < 8)         ch = S("ABC = ", 6, c - 2);
-                            else if (c == 8)  begin ch = bit_ch(sel[1]); attr = 3'd1; end
-                            else if (c == 9)  begin ch = bit_ch(sel[0]); attr = 3'd1; end
-                            else if (c == 10) begin ch = bit_ch(csel);   attr = 3'd1; end
+                            else if (c == 8)  ch = bit_ch(sel[1]);
+                            else if (c == 9)  ch = bit_ch(sel[0]);
+                            else if (c == 10) ch = bit_ch(csel);
                             else if (c >= 14 && c < 24)  ch = S("OUTPUT IS ", 10, c - 14);
-                            else if (c == 24) begin ch = dg(mux_out); attr = 3'd1; end
+                            else if (c == 24) ch = "?";
                         end
                         if (r == 27 && mode8 && c >= 2 && c < 50) begin
                             attr = 3'd5;

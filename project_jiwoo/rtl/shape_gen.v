@@ -58,6 +58,8 @@ module shape_gen (
     endfunction
 
     wire game_view = (state >= S_INIT) && (state <= S_WRONG);
+    // level 2: the chosen path is highlighted only on the result screens, never while the player is trying
+    wire rev2      = (state == S_CORRECT) || (state == S_WRONG);
     wire lv1       = (level == 2'd1);
 
     //==========================================================================
@@ -84,7 +86,7 @@ module shape_gen (
     wire [9:0] xb_end = gset ? (10'd112 + {4'b0000, lead_b, 1'b0}) : 10'd112;
     wire w1_a = hseg(x, y, 10'd56, xa_end, 10'd120);
     wire w1_b = hseg(x, y, 10'd56, xb_end, 10'd168);
-    wire w1_f = hseg(x, y, 10'd176, 10'd304, 10'd144) && gset;
+    wire w1_f = hseg(x, y, 10'd176, 10'd304, 10'd144);      // always drawn, even before a gate is chosen
 
     // NOT bubble at the gate output
     wire signed [10:0] dx = $signed({1'b0, x}) - 11'sd181;
@@ -197,12 +199,12 @@ module shape_gen (
                     if (m8_in)   rgb = C_BOXBG;
                     if (m8_edge) rgb = C_WHITE;
                     if (w8_any)  rgb = C_WHITE;
-                    if (w8_hot)  rgb = C_YELLOW;
+                    if (w8_hot && rev2) rgb = C_YELLOW;
                 end else begin
                     if (m1_in | m2_in | m3_in)       rgb = C_BOXBG;
                     if (m1_edge | m2_edge | m3_edge) rgb = C_WHITE;
                     if (w_any)                       rgb = C_WHITE;
-                    if (w_hot)                       rgb = C_YELLOW;
+                    if (w_hot && rev2)                rgb = C_YELLOW;
                 end
             end
         end
