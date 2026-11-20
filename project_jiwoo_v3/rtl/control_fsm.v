@@ -7,7 +7,7 @@
 //   bc is a 1-clock pulse of the centre button.
 //   In ANSWER the centre button submits, but only when every gate has been set (ans_ok).
 //   'match' = the player's circuit has the same truth table as the hidden circuit.
-//   State numbers are shared with text_gen / shape_gen / status_led.
+//   State numbers are shared with text_gen / shape_gen.
 //   Signals that must change only once (score, lives) are 1 only in the first
 //   clock after entering the state (the 'entering' flag).
 //------------------------------------------------------------------------------

@@ -16,7 +16,7 @@
 - 제출/다음 화면: `BTNC` (레벨 2에서는 `SW4`를 올려도 됨)
 - 점수: 레벨 1은 오답 없이 100점, 한 번 틀리면 70점, 두 번 이상 40점 / 레벨 2는 항상 100점
 - 7세그: `AN7`=레벨, `AN6`=문제 번호, `AN3`=목숨, `AN2~0`=점수
-- LED: `led_x[2:0]`=목숨, `led_x[3]`=제출 가능, `led_y`(RGB)=상태(파랑 풀이 중 / 초록 정답·클리어 / 빨강 오답·게임오버)
+- LED: `led_x[2:0]`=목숨, `led_x[3]`=제출 가능 (`led_y` RGB LED는 사용 안 함)
 - 리셋: `CPU_RESETN` (누르면 0)
 
 ## 디렉터리
@@ -40,7 +40,7 @@ top_board
  │                    └ MUX 선택 로직 (top_board 안)                   레벨 2
  ├ 화면   vga_sync ─ renderer ─┬ text_gen ─ font_rom
  │                             └ shape_gen ─ gate_sprite
- └ 출력   seg7_driver ← bin2bcd,  status_led
+ └ 출력   seg7_driver ← bin2bcd
 ```
 
 ### 모듈 설명
@@ -66,9 +66,8 @@ top_board
 | `font_rom.v` | 8x16 폰트 (`gen_font.py`로 생성, `text_gen.v`에 나오는 글자만 포함) |
 | `seg7_driver.v` | 8자리 7세그 다중화 구동 (0~9) |
 | `bin2bcd.v` | Double-Dabble 방식 10비트 이진수 → 3자리 BCD |
-| `status_led.v` | RGB LED 상태 표시 (1/16 밝기 PWM) |
 
-상태 번호(0,1,5,7,8,9)는 `control_fsm`, `text_gen`, `shape_gen`, `status_led`가 각자 `localparam`으로 공유하므로 상태를 바꿀 때는 네 파일을 같이 고쳐야 합니다.
+상태 번호(0,1,5,7,8,9)는 `control_fsm`, `text_gen`, `shape_gen`이 각자 `localparam`으로 공유하므로 상태를 바꿀 때는 세 파일을 같이 고쳐야 합니다.
 
 ## 수정 가이드
 

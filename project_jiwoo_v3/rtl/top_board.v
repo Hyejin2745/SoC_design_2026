@@ -14,7 +14,7 @@
 //
 //   rst     : CPU_RESETN pin (active low: pressed = 0)
 //   led_x   : [2:0] lives, [3] ready to submit
-//   led_y   : [2:0] state RGB LED (B,G,R), [3] unused
+//   led_y   : unused (always off)
 //   seg     : {CA..CG}      digit : AN[7:0]
 //   7-seg   : [7]level [6]question no. [3]lives [2:0]score
 //------------------------------------------------------------------------------
@@ -191,8 +191,5 @@ module top_board #(
     //--------------------------------------------------------------------------
     assign led_x = {(state == 4'd5) & ans_ok,                 // ready to submit
                     lives[1] & lives[0], lives[1], |lives};   // lives bar (3 lives = 111)
-
-    wire led_r, led_g, led_b;
-    status_led u_status (clk, rst_i, state, lives_zero, led_r, led_g, led_b);
-    assign led_y = {1'b0, led_b, led_g, led_r};
+    assign led_y = 4'b0000;                                   // RGB LED not used
 endmodule
